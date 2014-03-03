@@ -180,6 +180,10 @@ func (b *Brain) Reply(text string) string {
 		tokenIds = b.babble()
 	}
 
+	if len(tokenIds) == 0 {
+		return "I don't know enough to answer you yet!"
+	}
+
 	var count int
 
 	var bestReply *reply
@@ -208,7 +212,7 @@ func (b *Brain) Reply(text string) string {
 
 	fmt.Printf("Got %d total replies\n", count)
 	if bestReply == nil {
-		return "no replies :  ("
+		return "I don't know enough to answer you yet!"
 	}
 
 	return bestReply.ToString()
