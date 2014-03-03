@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -64,6 +65,17 @@ type stmts struct {
 }
 
 func openGraph(path string) (*graph, error) {
+	if _, err := os.Stat(path); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+
+		err = InitGraph(path, defaultGraphOptions)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	url := fmt.Sprintf("file:%s?cache=shared&mode=rwc", path)
 
 	db, err := sql.Open("sqlite3", url)
