@@ -70,7 +70,7 @@ func openGraph(path string) (*graph, error) {
 			return nil, err
 		}
 
-		err = InitGraph(path, defaultGraphOptions)
+		err = initGraph(path, defaultGraphOptions)
 		if err != nil {
 			return nil, err
 		}

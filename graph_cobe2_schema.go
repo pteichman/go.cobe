@@ -17,7 +17,7 @@ type graphOptions struct {
 
 var defaultGraphOptions = &graphOptions{3, "Cobe"}
 
-func InitGraph(path string, opts *graphOptions) error {
+func initGraph(path string, opts *graphOptions) error {
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return err

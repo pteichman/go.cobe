@@ -32,7 +32,7 @@ func TestInit(t *testing.T) {
 	path := tmp.Name()
 	defer os.Remove(path)
 
-	err = InitGraph(path, defaultGraphOptions)
+	err = initGraph(path, defaultGraphOptions)
 	if err != nil {
 		t.Error(err)
 	}
