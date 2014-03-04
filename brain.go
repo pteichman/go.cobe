@@ -200,7 +200,7 @@ loop:
 			if edges == nil {
 				// Channel was closed: run another search
 				replies = b.replySearch(tokenIds, stop)
-				continue
+				continue loop
 			}
 
 			reply := newReply(b.graph, edges)
