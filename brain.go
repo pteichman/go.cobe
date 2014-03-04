@@ -215,6 +215,8 @@ loop:
 		case <-timeout:
 			if bestReply != nil {
 				break loop
+			} else {
+				timeout = time.After(500 * time.Millisecond)
 			}
 		}
 	}
