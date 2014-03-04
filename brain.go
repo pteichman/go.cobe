@@ -189,20 +189,15 @@ func (b *Brain) Reply(text string) string {
 	var bestReply *reply
 	var bestScore float64 = -1
 
-	stop := make(chan bool)
-	replies := b.replySearch(tokenIds, stop)
+	next := b.replySearch(tokenIds)
 
-	timeout := time.After(500 * time.Millisecond)
-loop:
-	for {
-		select {
-		case edges := <-replies:
-			if edges == nil {
-				// Channel was closed: run another search
-				replies = b.replySearch(tokenIds, stop)
-				continue loop
-			}
-
+	endTime := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(endTime) {
+		edges, valid := next()
+		if !valid {
+			// run another search
+			next = b.replySearch(tokenIds)
+		} else {
 			reply := newReply(b.graph, edges)
 			score := b.scorer.Score(reply)
 
@@ -212,12 +207,6 @@ loop:
 			}
 
 			count++
-		case <-timeout:
-			if bestReply != nil {
-				break loop
-			} else {
-				timeout = time.After(500 * time.Millisecond)
-			}
 		}
 	}
 
@@ -255,73 +244,26 @@ func (b *Brain) babble() []tokenID {
 
 // replySearch combines a forward and a reverse search over the graph
 // into a series of replies.
-func (b *Brain) replySearch(tokenIds []tokenID, stop chan bool) <-chan []edgeID {
+func (b *Brain) replySearch(tokenIds []tokenID) func() ([]edgeID, bool) {
 	pivotID := b.pickPivot(tokenIds)
 	pivotNode := b.graph.getRandomNodeWithToken(pivotID)
 
 	endNode := b.graph.endContextID
 
-	revIter := &history{b.graph.search(pivotNode, endNode, Reverse), nil}
-	fwdIter := &history{b.graph.search(pivotNode, endNode, Forward), nil}
+	revIter := b.graph.search(pivotNode, endNode, Reverse)
+	fwdIter := b.graph.search(pivotNode, endNode, Forward)
 
-	replies := make(chan []edgeID)
-
-	go func() {
-	loop:
-		for {
-			rev := revIter.Next()
-			if rev {
-				// combine new rev with all fwds
-				for _, f := range fwdIter.h {
-					select {
-					case replies <- join(revIter.Result(), f):
-						// nothing
-					case <-stop:
-						break loop
-					}
-				}
-			}
-
-			fwd := fwdIter.Next()
-			if fwd {
-				// combine new rev with all fwds
-				for _, r := range revIter.h {
-					select {
-					case replies <- join(r, fwdIter.Result()):
-						// nothing
-					case <-stop:
-						break loop
-					}
-				}
-			}
-
-			if !rev && !fwd {
-				break
-			}
+	return func() ([]edgeID, bool) {
+		if !revIter.Next() {
+			return nil, false
 		}
 
-		close(replies)
-	}()
+		if !fwdIter.Next() {
+			return nil, false
+		}
 
-	return replies
-}
-
-type history struct {
-	s *search
-	h [][]edgeID
-}
-
-func (h *history) Next() bool {
-	ret := h.s.Next()
-	if ret {
-		h.h = append(h.h, h.s.Result())
+		return join(revIter.Result(), fwdIter.Result()), true
 	}
-
-	return ret
-}
-
-func (h *history) Result() []edgeID {
-	return h.s.Result()
 }
 
 func join(rev []edgeID, fwd []edgeID) []edgeID {
