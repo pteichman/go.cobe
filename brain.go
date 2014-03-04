@@ -213,7 +213,9 @@ loop:
 
 			count++
 		case <-timeout:
-			break loop
+			if bestReply != nil {
+				break loop
+			}
 		}
 	}
 
