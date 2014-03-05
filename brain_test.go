@@ -44,6 +44,31 @@ func TestReply(t *testing.T) {
 	fmt.Printf("End reply: %s\n", b.Reply("this this this is a test test test"))
 }
 
+// Run looped learn/reply on a brain to try to reproduce sqlite3 errors.
+func TestLoop(t *testing.T) {
+	filename, err := tmpCopy("data/pg11.brain")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer os.Remove(filename)
+
+	b, err := OpenBrain(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 20; i++ {
+		msg := "this is a test message with a moderate number of ngrams"
+		b.Learn(msg)
+		reply := b.Reply(msg)
+
+		if reply == "" {
+			t.Error("empty reply")
+		}
+	}
+}
+
 func TestToEdges(t *testing.T) {
 	tests := []struct {
 		order    int
