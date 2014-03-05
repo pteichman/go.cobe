@@ -154,29 +154,30 @@ func repeat(n int, id tokenID) []tokenID {
 func pragmas(db *sql.DB) error {
 	// Disable the SQLite cache. Its pages tend to get swapped
 	// out, even if the database file is in buffer cache.
-	err := exec0(db, "PRAGMA cache_size=0")
+	var err error
+	_, err = db.Exec("PRAGMA cache_size=0")
 	if err != nil {
 		return err
 	}
 
-	err = exec0(db, "PRAGMA page_size=4096")
+	_, err = db.Exec("PRAGMA page_size=4096")
 	if err != nil {
 		return err
 	}
 
 	// Make speed-for-reliability tradeoffs that improve bulk
 	// learning.
-	err = exec0(db, "PRAGMA journal_mode=truncate")
+	_, err = db.Exec("PRAGMA journal_mode=truncate")
 	if err != nil {
 		return err
 	}
 
-	err = exec0(db, "PRAGMA temp_store=memory")
+	_, err = db.Exec("PRAGMA temp_store=memory")
 	if err != nil {
 		return err
 	}
 
-	err = exec0(db, "PRAGMA synchronous=OFF")
+	_, err = db.Exec("PRAGMA synchronous=OFF")
 	if err != nil {
 		return err
 	}
@@ -325,20 +326,6 @@ func nStrings(n int, f func(int) string) []string {
 	}
 
 	return ret
-}
-
-func exec0(db *sql.DB, query string) error {
-	stmt, err := db.Prepare(query)
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.Exec()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (g *graph) GetInfoString(key string) (string, error) {
@@ -571,6 +558,7 @@ func (g *graph) getTokensByStem(stem string) []tokenID {
 		log.Printf("ERROR: %s", err)
 		return ret
 	}
+	defer rows.Close()
 
 	var t int64
 	for rows.Next() {
@@ -612,7 +600,12 @@ func (s *search) Next() bool {
 			return true
 		}
 
-		rows, _ := s.follow(cur.node)
+		rows, err := s.follow(cur.node)
+		if err != nil {
+			log.Printf("ERROR: %s\n", err)
+		}
+		defer rows.Close()
+
 		for rows.Next() {
 			var e, n int64
 			rows.Scan(&e, &n)
