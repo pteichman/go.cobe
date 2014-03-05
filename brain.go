@@ -223,7 +223,9 @@ loop:
 
 	// Tell replies to stop and block until we're sure it has closed.
 	close(stop)
-	<-replies
+	if _, ok := <-replies; ok {
+		// Replies got unexpected results after search stop.
+	}
 
 	fmt.Printf("Got %d total replies\n", count)
 	if bestReply == nil {
@@ -259,29 +261,20 @@ func (b *Brain) babble() []tokenID {
 
 // replySearch combines a forward and a reverse search over the graph
 // into a series of replies.
-func (b *Brain) replySearch(tokenIds []tokenID, stop chan bool) <-chan []edgeID {
+func (b *Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []edgeID {
 	pivotID := b.pickPivot(tokenIds)
 	pivotNode := b.graph.getRandomNodeWithToken(pivotID)
 
 	endNode := b.graph.endContextID
 
-	revIter := &history{b.graph.search(pivotNode, endNode, Reverse), nil}
-	fwdIter := &history{b.graph.search(pivotNode, endNode, Forward), nil}
+	revIter := &history{b.graph.search(pivotNode, endNode, Reverse, stop), nil}
+	fwdIter := &history{b.graph.search(pivotNode, endNode, Forward, stop), nil}
 
 	replies := make(chan []edgeID)
 
 	go func() {
 	loop:
 		for {
-			select {
-			case <-stop:
-				// Give this goroutine a chance to stop
-				// before revIter.Next() blocks on the
-				// database.
-				break loop
-			default:
-			}
-
 			rev := revIter.Next()
 			if rev {
 				// combine new rev with all fwds

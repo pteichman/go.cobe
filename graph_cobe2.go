@@ -590,9 +590,11 @@ type search struct {
 	end    nodeID
 	left   *queue.Queue
 	result []edgeID
+	stop   <-chan bool
 }
 
 func (s *search) Next() bool {
+loop:
 	for s.left.Len() > 0 {
 		cur := s.left.PopFront().(*node)
 		if cur.node == s.end {
@@ -600,17 +602,22 @@ func (s *search) Next() bool {
 			return true
 		}
 
-		rows, err := s.follow(cur.node)
-		if err != nil {
-			log.Printf("ERROR: %s\n", err)
-		}
-		defer rows.Close()
+		select {
+		case <-s.stop:
+			break loop
+		default:
+			rows, err := s.follow(cur.node)
+			if err != nil {
+				log.Printf("ERROR: %s\n", err)
+			}
+			defer rows.Close()
 
-		for rows.Next() {
-			var e, n int64
-			rows.Scan(&e, &n)
-			path := append(cur.path[:], edgeID(e))
-			s.left.PushBack(&node{nodeID(n), path})
+			for rows.Next() {
+				var e, n int64
+				rows.Scan(&e, &n)
+				path := append(cur.path[:], edgeID(e))
+				s.left.PushBack(&node{nodeID(n), path})
+			}
 		}
 	}
 
@@ -622,7 +629,7 @@ func (s *search) Result() []edgeID {
 	return s.result
 }
 
-func (g *graph) search(start nodeID, end nodeID, dir Direction) *search {
+func (g *graph) search(start nodeID, end nodeID, dir Direction, stop <-chan bool) *search {
 	var q string
 	if dir == Forward {
 		q = "SELECT id, next_node FROM edges WHERE prev_node = ?"
@@ -637,5 +644,5 @@ func (g *graph) search(start nodeID, end nodeID, dir Direction) *search {
 	left := queue.New()
 	left.PushBack(&node{start, nil})
 
-	return &search{follow, end, left, nil}
+	return &search{follow, end, left, nil, stop}
 }
