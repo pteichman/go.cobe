@@ -3,6 +3,7 @@ package cobe
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -46,6 +47,12 @@ func TestReply(t *testing.T) {
 
 // Run looped learn/reply on a brain to try to reproduce sqlite3 errors.
 func TestLoop(t *testing.T) {
+	// Test with an unreasonable number of GOMAXPROCS. This is a
+	// temporary measure while ensuring single threaded acccess to
+	// sqlite3.
+	oldMaxProcs := runtime.GOMAXPROCS(100)
+	defer runtime.GOMAXPROCS(oldMaxProcs)
+
 	filename, err := tmpCopy("data/pg11.brain")
 	if err != nil {
 		t.Error(err)
