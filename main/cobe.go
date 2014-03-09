@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -20,6 +22,21 @@ var (
 	ircchannel = flag.String("irc.channels", "#cobe", "irc channels")
 	ircnick    = flag.String("irc.nick", "cobe", "irc nickname")
 )
+
+func learnFileLines(b *cobe.Brain, path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	s := bufio.NewScanner(bufio.NewReader(f))
+	for s.Scan() {
+		fmt.Println(s.Text())
+		b.Learn(s.Text())
+	}
+
+	return nil
+}
 
 func main() {
 	flag.Parse()
@@ -43,12 +60,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if args[0] == "console" {
+	switch cmd := args[0]; cmd {
+	case "console":
 		console.RunForever(b)
-	} else if args[0] == "irc-client" {
+	case "irc-client":
 		opts := &ircbot.Options{
 			*ircserver, *ircnick, []string{*ircchannel}, nil,
 		}
 		ircbot.RunForever(b, opts)
+	case "learn":
+		for _, f := range args[1:] {
+			learnFileLines(b, f)
+		}
+	default:
+		log.Fatalf("Unknown command: %s", cmd)
 	}
 }
