@@ -90,5 +90,20 @@ CREATE TABLE edges (
 	db.Exec("INSERT INTO info (attribute, text) VALUES ('tokenizer', ?)",
 		opts.tokenizer)
 
+	db.Exec(`
+CREATE TRIGGER IF NOT EXISTS edges_insert_trigger AFTER INSERT ON edges
+    BEGIN UPDATE nodes SET count = count + NEW.count
+        WHERE nodes.id = NEW.next_node; END;`)
+
+	db.Exec(`
+CREATE TRIGGER IF NOT EXISTS edges_update_trigger AFTER UPDATE ON edges
+    BEGIN UPDATE nodes SET count = count + (NEW.count - OLD.count)
+        WHERE nodes.id = NEW.next_node; END;`)
+
+	db.Exec(`
+CREATE TRIGGER IF NOT EXISTS edges_delete_trigger AFTER DELETE ON edges
+    BEGIN UPDATE nodes SET count = count - old.count
+        WHERE nodes.id = OLD.next_node; END;`)
+
 	return nil
 }
