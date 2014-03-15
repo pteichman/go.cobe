@@ -61,7 +61,7 @@ func (b *Brain) Learn(text string) {
 	tokens := b.tok.Split(text)
 
 	// skip learning if too few tokens (but don't count spaces)
-	if countGoodTokens(tokens) <= b.graph.getOrder() {
+	if countGoodTokens(tokens) <= b.graph.order {
 		return
 	}
 
@@ -102,7 +102,7 @@ func countGoodTokens(tokens []string) int {
 
 func (b *Brain) forEdges(tokenIds []tokenID, f func([]tokenID, []tokenID, bool)) {
 	// Call f() on every N-gram (N = brain order) in tokenIds.
-	order := b.graph.getOrder()
+	order := b.graph.order
 
 	chain := b.toChain(order, tokenIds)
 	edges := toEdges(order, chain)
@@ -394,7 +394,7 @@ func (r *reply) ToString() string {
 		var parts []string
 
 		// Skip any edges that don't contain word nodes.
-		wordEdges := r.edges[1 : len(r.edges)-r.graph.getOrder()+1]
+		wordEdges := r.edges[1 : len(r.edges)-r.graph.order+1]
 
 		for _, edge := range wordEdges {
 			word, hasSpace, err := r.graph.getTextByEdge(edge)

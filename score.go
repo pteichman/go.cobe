@@ -23,7 +23,7 @@ func (s *cobeScorer) Score(reply *reply) float64 {
 	// First, we have (graph.order - 1) extra edges on either end
 	// of the reply, cobe 2.0 learns from (endToken, endToken,
 	// ...).
-	nWords := len(reply.edges) - (g.getOrder()-1)*2
+	nWords := len(reply.edges) - (g.order-1)*2
 
 	if nWords > 16 {
 		info /= math.Sqrt(float64(nWords - 1))

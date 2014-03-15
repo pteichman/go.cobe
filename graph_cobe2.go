@@ -36,6 +36,7 @@ type graph struct {
 
 	stemmer stemmer
 
+	order        int
 	endTokenID   tokenID
 	endContextID nodeID
 }
@@ -95,8 +96,9 @@ func openGraph(path string) (*graph, error) {
 	}
 
 	g := &graph{db: db, q: stmts}
+	g.order = g.getOrder()
 
-	err = prepareSql(db, stmts, g.getOrder())
+	err = prepareSql(db, stmts, g.order)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +141,7 @@ func (g *graph) getOrder() int {
 }
 
 func (g *graph) endContext() []tokenID {
-	return []tokenID(repeat(g.getOrder(), g.endTokenID))
+	return []tokenID(repeat(g.order, g.endTokenID))
 }
 
 func repeat(n int, id tokenID) []tokenID {
