@@ -172,10 +172,4 @@ func TestGetTextByEdge(t *testing.T) {
 	if word != "." || hasSpace != true {
 		t.Errorf("Expected . & true, got %s & %s", word, hasSpace)
 	}
-
-	// Test joining a full reply.
-	reply := newReply(g, []edgeID{22, 23, 24})
-	if reply.ToString() != "Down the Rabbit-Hole" {
-		t.Errorf("Expected 'Down the Rabbit-Hole', got %s", reply)
-	}
 }
