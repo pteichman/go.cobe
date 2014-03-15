@@ -615,8 +615,9 @@ loop:
 			for rows.Next() {
 				var e, n int64
 				rows.Scan(&e, &n)
-				path := append(cur.path[:], edgeID(e))
-				s.left.PushBack(&node{nodeID(n), path})
+
+				path := cur.path[0:len(cur.path):len(cur.path)]
+				s.left.PushBack(&node{nodeID(n), append(path, edgeID(e))})
 			}
 		}
 	}

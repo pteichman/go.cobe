@@ -393,10 +393,17 @@ func (r *reply) ToString() string {
 	if !r.hasText {
 		var parts []string
 
-		for _, edge := range r.edges {
+		// Skip any edges that don't contain word nodes.
+		wordEdges := r.edges[1 : len(r.edges)-r.graph.getOrder()+1]
+
+		for _, edge := range wordEdges {
 			word, hasSpace, err := r.graph.getTextByEdge(edge)
 			if err != nil {
 				log.Printf("ERROR: %s\n", err)
+			}
+
+			if word == "" {
+				log.Printf("ERROR: empty node text! %s", r.edges)
 			}
 
 			parts = append(parts, word)
