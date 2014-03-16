@@ -7,6 +7,7 @@ import (
 	"time"
 
 	irc "github.com/fluffle/goirc/client"
+	logging "github.com/op/go-logging"
 	"github.com/pteichman/go.cobe"
 )
 
@@ -16,6 +17,8 @@ type Options struct {
 	Channels []string
 	Ignore   []string
 }
+
+var clog = logging.MustGetLogger("cobe.ircbot")
 
 // Backoff policy, milliseconds per attempt. End up with 30s attempts.
 var backoff = []int{0, 0, 10, 30, 100, 300, 1000, 3000, 10000, 30000}
@@ -30,13 +33,17 @@ func backoffDuration(i int) time.Duration {
 
 func backoffConnect(conn *irc.Conn, o *Options) {
 	for i := 0; true; i++ {
-		time.Sleep(backoffDuration(i))
+		wait := backoffDuration(i)
+		time.Sleep(wait)
 
 		err := conn.Connect(o.Server)
 		if err == nil {
 			// The connection was successful.
 			break
 		}
+
+		clog.Warning("Connection to %s failed: %s [%dms]", o.Server, err,
+			int64(wait/time.Millisecond))
 	}
 }
 
@@ -47,12 +54,15 @@ func RunForever(b *cobe.Brain, o *Options) {
 	conn.Me.Name = o.Nick
 
 	conn.AddHandler("connected", func(conn *irc.Conn, line *irc.Line) {
+		clog.Notice("Connected to %s. Joining %s.", o.Server,
+			strings.Join(o.Channels, ", "))
 		for _, channel := range o.Channels {
 			conn.Join(channel)
 		}
 	})
 
 	conn.AddHandler("disconnected", func(conn *irc.Conn, line *irc.Line) {
+		clog.Warning("Disconnected from %s.", o.Server)
 		backoffConnect(conn, o)
 	})
 
@@ -62,12 +72,14 @@ func RunForever(b *cobe.Brain, o *Options) {
 
 	conn.AddHandler("privmsg", func(conn *irc.Conn, line *irc.Line) {
 		user := line.Nick
-		if in(o.Ignore, line.Nick) {
+		if in(o.Ignore, user) {
+			clog.Debug("Ignoring privmsg from %s", user)
 			return
 		}
 
 		target := line.Args[0]
 		if !in(o.Channels, target) {
+			clog.Debug("Ignoring privmsg on %s", target)
 			return
 		}
 
@@ -83,10 +95,12 @@ func RunForever(b *cobe.Brain, o *Options) {
 
 		msg = strings.TrimSpace(msg)
 
+		clog.Debug("Learn: %s", msg)
 		b.Learn(msg)
 
 		if to == o.Nick {
 			reply := b.Reply(msg)
+			clog.Debug("Reply: %s", reply)
 			conn.Privmsg(target, fmt.Sprintf("%s: %s", user, reply))
 		}
 	})
