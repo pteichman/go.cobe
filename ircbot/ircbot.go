@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	irc "github.com/fluffle/goirc/client"
@@ -61,10 +60,6 @@ func RunForever(b *cobe.Brain, o *Options) {
 	// urls as messages spoken to http.
 	userMsg := regexp.MustCompile(`^(\S+)[,:]\s(.*?)$`)
 
-	// sqlite3 is having trouble with multiple threads. Lock
-	// around all brain calls for now.
-	lock := sync.Mutex{}
-
 	conn.AddHandler("privmsg", func(conn *irc.Conn, line *irc.Line) {
 		user := line.Nick
 		if in(o.Ignore, line.Nick) {
@@ -88,9 +83,6 @@ func RunForever(b *cobe.Brain, o *Options) {
 		}
 
 		msg = strings.TrimSpace(msg)
-
-		lock.Lock()
-		defer lock.Unlock()
 
 		b.Learn(msg)
 
