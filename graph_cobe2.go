@@ -131,11 +131,13 @@ func (g *graph) close() {
 func (g *graph) getOrder() int {
 	str, err := g.getInfoString("order")
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 	}
 
 	val, err := strconv.Atoi(str)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 	}
 
@@ -340,6 +342,7 @@ func (g *graph) getInfoString(key string) (string, error) {
 
 	err := g.q.selectInfo.QueryRow(key).Scan(&value)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return "", err
 	}
 
@@ -360,11 +363,13 @@ func (g *graph) setInfoString(key, value string) error {
 
 	res, err := g.q.updateInfo.Exec(key, value)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return err
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return err
 	}
 
@@ -374,6 +379,7 @@ func (g *graph) setInfoString(key, value string) error {
 
 	res, err = g.q.insertInfo.Exec(key, value)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return err
 	}
 
@@ -388,6 +394,7 @@ func (g *graph) getTokenID(text string) (tokenID, error) {
 
 	err := g.q.selectToken.QueryRow(text).Scan(&value)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return -1, err
 	}
 
@@ -432,6 +439,7 @@ func (g *graph) filterTokens(query string, tokenIds []tokenID) []tokenID {
 
 	rows, err := g.db.Query(query, toQueryArgs(tokenIds)...)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 		return nil
 	}
@@ -464,13 +472,16 @@ func (g *graph) getOrCreateToken(text string) tokenID {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
+	stats.Inc("token.create", 1, 1.0)
 	res, err := g.q.insertToken.Exec(text, isWord)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return -1
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return -1
 	}
 
@@ -479,6 +490,7 @@ func (g *graph) getOrCreateToken(text string) tokenID {
 	if g.stemmer != nil {
 		stem := g.stemmer.Stem(text)
 		if stem != "" {
+			stats.Inc("stem.create", 1, 1.0)
 			g.q.insertStem.Exec(tokenID, stem)
 		}
 	}
@@ -508,13 +520,16 @@ func (g *graph) getOrCreateNode(tokens []tokenID) nodeID {
 		return nodeID(node)
 	}
 
+	stats.Inc("node.create", 1, 1.0)
 	res, err := g.q.insertNode.Exec(tokenIds...)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 	}
 
 	node, err = res.LastInsertId()
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 	}
 
@@ -527,17 +542,21 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 
 	res, err := g.q.incrEdge.Exec(prev, next, hasSpace)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 	}
 
 	n, err := res.RowsAffected()
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 	}
 
 	if n == 0 {
+		stats.Inc("edge.create", 1, 1.0)
 		_, err := g.q.insertEdge.Exec(prev, next, hasSpace)
 		if err != nil {
+			stats.Inc("error", 1, 1.0)
 			clog.Error("%s", err)
 		}
 	}
@@ -557,6 +576,7 @@ func (g *graph) getTextByEdge(edgeID edgeID) (string, bool, error) {
 
 	err := g.q.selectEdgeText.QueryRow(edgeID).Scan(&text, &hasSpace)
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		return "", false, err
 	}
 
@@ -595,6 +615,7 @@ func (g *graph) getTokensByStem(stem string) []tokenID {
 
 	rows, err := g.q.selectStemTokens.Query(g.stemmer.Stem(stem))
 	if err != nil {
+		stats.Inc("error", 1, 1.0)
 		clog.Error("%s", err)
 		return ret
 	}
@@ -651,6 +672,7 @@ loop:
 		default:
 			nodes, edges, err := s.follow(cur.node)
 			if err != nil {
+				stats.Inc("error", 1, 1.0)
 				clog.Error("%s", err)
 			}
 

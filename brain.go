@@ -57,13 +57,15 @@ func getTokenizer(name string) tokenizer {
 }
 
 func (b *Brain) Learn(text string) {
-	stats.Inc("learn", 1, 1.0)
 	tokens := b.tok.Split(text)
 
 	// skip learning if too few tokens (but don't count spaces)
 	if countGoodTokens(tokens) <= b.graph.order {
+		stats.Inc("learn.skip", 1, 1.0)
 		return
 	}
+
+	stats.Inc("learn", 1, 1.0)
 
 	var tokenIds []tokenID
 	for _, text := range tokens {
@@ -183,6 +185,7 @@ func (b *Brain) Reply(text string) string {
 	}
 
 	if len(tokenIds) == 0 {
+		stats.Inc("error", 1, 1.0)
 		return "I don't know enough to answer you yet!"
 	}
 
@@ -227,6 +230,7 @@ loop:
 	close(stop)
 	if _, ok := <-replies; ok {
 		// Replies got unexpected results after search stop.
+		stats.Inc("error", 1, 1.0)
 	}
 
 	stats.Inc("reply.candidate", int64(count), 1.0)
@@ -403,10 +407,12 @@ func (r *reply) ToString() string {
 		for _, edge := range wordEdges {
 			word, hasSpace, err := r.graph.getTextByEdge(edge)
 			if err != nil {
+				stats.Inc("error", 1, 1.0)
 				clog.Error("can't get text", err)
 			}
 
 			if word == "" {
+				stats.Inc("error", 1, 1.0)
 				clog.Error("empty node text! %s", r.edges)
 			}
 
