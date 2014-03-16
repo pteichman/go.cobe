@@ -68,7 +68,6 @@ func RunForever(b *cobe.Brain, o *Options) {
 
 		target := line.Args[0]
 		if !in(o.Channels, target) {
-
 			return
 		}
 
