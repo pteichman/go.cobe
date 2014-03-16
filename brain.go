@@ -22,7 +22,7 @@ func OpenBrain(path string) (*Brain, error) {
 		return nil, err
 	}
 
-	version, err := graph.GetInfoString("version")
+	version, err := graph.getInfoString("version")
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func OpenBrain(path string) (*Brain, error) {
 		return nil, fmt.Errorf("cannot read version %s brain", version)
 	}
 
-	tokenizer, err := graph.GetInfoString("tokenizer")
+	tokenizer, err := graph.getInfoString("tokenizer")
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func OpenBrain(path string) (*Brain, error) {
 
 func (b *Brain) Close() {
 	if b.graph != nil {
-		b.graph.Close()
+		b.graph.close()
 		b.graph = nil
 	}
 }
@@ -71,7 +71,7 @@ func (b *Brain) Learn(text string) {
 		if text == " " {
 			tokenID = spaceTokenID
 		} else {
-			tokenID = b.graph.GetOrCreateToken(text)
+			tokenID = b.graph.getOrCreateToken(text)
 		}
 
 		tokenIds = append(tokenIds, tokenID)
@@ -80,9 +80,9 @@ func (b *Brain) Learn(text string) {
 	var prevNode nodeID
 	b.forEdges(tokenIds, func(prev, next []tokenID, hasSpace bool) {
 		if prevNode == 0 {
-			prevNode = b.graph.GetOrCreateNode(prev)
+			prevNode = b.graph.getOrCreateNode(prev)
 		}
-		nextNode := b.graph.GetOrCreateNode(next)
+		nextNode := b.graph.getOrCreateNode(next)
 
 		b.graph.addEdge(prevNode, nextNode, hasSpace)
 		prevNode = nextNode
@@ -267,18 +267,18 @@ func (b *Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []edgeI
 
 	endNode := b.graph.endContextID
 
-	revIter := &history{b.graph.search(pivotNode, endNode, Reverse, stop), nil}
-	fwdIter := &history{b.graph.search(pivotNode, endNode, Forward, stop), nil}
+	revIter := &history{b.graph.search(pivotNode, endNode, reverse, stop), nil}
+	fwdIter := &history{b.graph.search(pivotNode, endNode, forward, stop), nil}
 
 	replies := make(chan []edgeID)
 
 	go func() {
 	loop:
 		for {
-			rev := revIter.Next()
+			rev := revIter.next()
 			if rev {
 				// combine new rev with all fwds
-				result := revIter.Result()
+				result := revIter.result()
 				for _, f := range fwdIter.h {
 					select {
 					case replies <- join(result, f):
@@ -289,10 +289,10 @@ func (b *Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []edgeI
 				}
 			}
 
-			fwd := fwdIter.Next()
+			fwd := fwdIter.next()
 			if fwd {
 				// combine new fwd with all revs
-				result := fwdIter.Result()
+				result := fwdIter.result()
 				for _, r := range revIter.h {
 					select {
 					case replies <- join(r, result):
@@ -319,17 +319,17 @@ type history struct {
 	h [][]edgeID
 }
 
-func (h *history) Next() bool {
-	ret := h.s.Next()
+func (h *history) next() bool {
+	ret := h.s.next()
 	if ret {
-		h.h = append(h.h, h.s.Result())
+		h.h = append(h.h, h.s.result)
 	}
 
 	return ret
 }
 
-func (h *history) Result() []edgeID {
-	return h.s.Result()
+func (h *history) result() []edgeID {
+	return h.s.result
 }
 
 func join(rev []edgeID, fwd []edgeID) []edgeID {

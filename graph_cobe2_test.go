@@ -50,24 +50,24 @@ func TestInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer g.Close()
+	defer g.close()
 
-	order, _ := g.GetInfoString("order")
+	order, _ := g.getInfoString("order")
 	if order != "3" {
 		t.Error("Order: expected 3, was %s", order)
 	}
 
-	text, err := g.GetInfoString("missing")
+	text, err := g.getInfoString("missing")
 	if text != "" || err == nil {
 		t.Error("Expected empty text and nil error")
 	}
 
-	err = g.SetInfoString("foo", "bar")
+	err = g.setInfoString("foo", "bar")
 	if err != nil {
 		t.Error(err)
 	}
 
-	text, err = g.GetInfoString("foo")
+	text, err = g.getInfoString("foo")
 	if text != "bar" || err != nil {
 		t.Error("Expected bar, was %s", text)
 	}
@@ -85,14 +85,14 @@ func TestAlice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer g.Close()
+	defer g.close()
 
-	order, _ := g.GetInfoString("order")
+	order, _ := g.getInfoString("order")
 	if order != "3" {
 		t.Error("Order: expected 3, was %s", order)
 	}
 
-	token, err := g.GetTokenID("Alice")
+	token, err := g.getTokenID("Alice")
 	if err != nil {
 		t.Error(err)
 	}
@@ -101,7 +101,7 @@ func TestAlice(t *testing.T) {
 		t.Error("Token[Alice]: expected 18, was %d", token)
 	}
 
-	token = g.GetOrCreateToken("Alice2")
+	token = g.getOrCreateToken("Alice2")
 	if token != 3428 {
 		t.Error("Token[Alice2]: expected 3428, was %d", token)
 	}
@@ -123,7 +123,7 @@ func TestKnownTokenIds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer g.Close()
+	defer g.close()
 
 	// "." and "Alice" are found, "robot" not.
 	knownIds := g.getKnownTokenIds([]string{".", "Alice", "robot"})
@@ -162,7 +162,7 @@ func TestGetTextByEdge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer g.Close()
+	defer g.close()
 
 	word, hasSpace, err := g.getTextByEdge(21)
 	if err != nil {

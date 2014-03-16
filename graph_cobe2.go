@@ -24,11 +24,11 @@ type tokenID int64
 type nodeID int64
 type edgeID int64
 
-type Direction int
+type direction int
 
 const (
-	Forward Direction = iota
-	Reverse
+	forward direction = iota
+	reverse
 )
 
 type graph struct {
@@ -106,7 +106,7 @@ func openGraph(path string) (*graph, error) {
 		return nil, err
 	}
 
-	lang, err := g.GetInfoString("stemmer")
+	lang, err := g.getInfoString("stemmer")
 	if lang != "" {
 		s, err := snowball.New(lang)
 		if err != nil {
@@ -116,13 +116,13 @@ func openGraph(path string) (*graph, error) {
 		}
 	}
 
-	g.endTokenID = g.GetOrCreateToken("")
-	g.endContextID = g.GetOrCreateNode(g.endContext())
+	g.endTokenID = g.getOrCreateToken("")
+	g.endContextID = g.getOrCreateNode(g.endContext())
 
 	return g, nil
 }
 
-func (g *graph) Close() {
+func (g *graph) close() {
 	if g.db != nil {
 		g.db.Close()
 		g.db = nil
@@ -130,7 +130,7 @@ func (g *graph) Close() {
 }
 
 func (g *graph) getOrder() int {
-	str, err := g.GetInfoString("order")
+	str, err := g.getInfoString("order")
 	if err != nil {
 		log.Println(err)
 	}
@@ -333,7 +333,7 @@ func nStrings(n int, f func(int) string) []string {
 	return ret
 }
 
-func (g *graph) GetInfoString(key string) (string, error) {
+func (g *graph) getInfoString(key string) (string, error) {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
 
@@ -347,7 +347,7 @@ func (g *graph) GetInfoString(key string) (string, error) {
 	return value, nil
 }
 
-func (g *graph) DelInfoString(key string) error {
+func (g *graph) delInfoString(key string) error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -355,7 +355,7 @@ func (g *graph) DelInfoString(key string) error {
 	return err
 }
 
-func (g *graph) SetInfoString(key, value string) error {
+func (g *graph) setInfoString(key, value string) error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -381,7 +381,7 @@ func (g *graph) SetInfoString(key, value string) error {
 	return nil
 }
 
-func (g *graph) GetTokenID(text string) (tokenID, error) {
+func (g *graph) getTokenID(text string) (tokenID, error) {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
 
@@ -410,7 +410,7 @@ func (g *graph) getKnownTokenIds(tokens []string) []tokenID {
 	var ret []tokenID
 
 	for _, token := range tokens {
-		id, err := g.GetTokenID(token)
+		id, err := g.getTokenID(token)
 		if err == nil {
 			ret = append(ret, tokenID(id))
 		}
@@ -453,8 +453,8 @@ func seqQ(n int) string {
 		nStrings(n, func(n int) string { return "?" }), ", ")
 }
 
-func (g *graph) GetOrCreateToken(text string) tokenID {
-	token, err := g.GetTokenID(text)
+func (g *graph) getOrCreateToken(text string) tokenID {
+	token, err := g.getTokenID(text)
 	if err == nil {
 		return token
 	}
@@ -496,7 +496,7 @@ func toQueryArgs(tokenIds []tokenID) []interface{} {
 	return ret
 }
 
-func (g *graph) GetOrCreateNode(tokens []tokenID) nodeID {
+func (g *graph) getOrCreateNode(tokens []tokenID) nodeID {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -637,7 +637,7 @@ type search struct {
 	stop   <-chan bool
 }
 
-func (s *search) Next() bool {
+func (s *search) next() bool {
 loop:
 	for s.left.Len() > 0 {
 		cur := s.left.PopFront().(*node)
@@ -669,13 +669,9 @@ loop:
 	return false
 }
 
-func (s *search) Result() []edgeID {
-	return s.result
-}
-
-func (g *graph) search(start nodeID, end nodeID, dir Direction, stop <-chan bool) *search {
+func (g *graph) search(start nodeID, end nodeID, dir direction, stop <-chan bool) *search {
 	var q string
-	if dir == Forward {
+	if dir == forward {
 		q = "SELECT id, next_node FROM edges WHERE prev_node = ?"
 	} else {
 		q = "SELECT id, prev_node FROM edges WHERE next_node = ?"
