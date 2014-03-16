@@ -63,15 +63,16 @@ func main() {
 		clog.Fatal("%s", err)
 	}
 
-	switch cmd := args[0]; cmd {
-	case "console":
+	var cmd = args[0]
+	switch {
+	case cmd == "console":
 		console.RunForever(b)
-	case "irc-client":
+	case cmd == "ircbot" || cmd == "irc-client":
 		opts := &ircbot.Options{
 			*ircserver, *ircnick, []string{*ircchannel}, nil,
 		}
 		ircbot.RunForever(b, opts)
-	case "learn":
+	case cmd == "learn":
 		for _, f := range args[1:] {
 			learnFileLines(b, f)
 		}
