@@ -57,6 +57,7 @@ func getTokenizer(name string) tokenizer {
 }
 
 func (b *Brain) Learn(text string) {
+	stats.Inc("learn", 1, 1.0)
 	tokens := b.tok.Split(text)
 
 	// skip learning if too few tokens (but don't count spaces)
@@ -169,6 +170,8 @@ func toEdges(order int, tokenIds []tokenID) []edge {
 }
 
 func (b *Brain) Reply(text string) string {
+	stats.Inc("reply", 1, 1.0)
+
 	tokens := b.tok.Split(text)
 	tokenIds := b.graph.filterPivots(unique(tokens))
 
@@ -225,6 +228,8 @@ loop:
 	if _, ok := <-replies; ok {
 		// Replies got unexpected results after search stop.
 	}
+
+	stats.Inc("reply.candidate", int64(count), 1.0)
 
 	clog.Info("Got %d total replies\n", count)
 	if bestReply == nil {

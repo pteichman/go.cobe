@@ -9,6 +9,7 @@ import (
 )
 
 import (
+	"github.com/cactus/go-statsd-client/statsd"
 	"github.com/op/go-logging"
 	"github.com/pteichman/go.cobe"
 	"github.com/pteichman/go.cobe/console"
@@ -23,6 +24,11 @@ var (
 	ircserver  = flag.String("irc.server", "", "irc server (host:port)")
 	ircchannel = flag.String("irc.channels", "#cobe", "irc channels")
 	ircnick    = flag.String("irc.nick", "cobe", "irc nickname")
+)
+
+var (
+	statsdserver = flag.String("statsd.server", "", "statsd server (host:port)")
+	statsdname   = flag.String("statsd.name", "cobe", "statsd name")
 )
 
 func learnFileLines(b *cobe.Brain, path string) error {
@@ -50,6 +56,15 @@ func main() {
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
+	}
+
+	if *statsdserver != "" {
+		s, err := statsd.New(*statsdserver, *statsdname)
+		if err != nil {
+			clog.Fatal("Initializing statsd: %s", err)
+		}
+
+		cobe.SetStatter(s)
 	}
 
 	args := flag.Args()
