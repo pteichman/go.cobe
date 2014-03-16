@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -111,6 +112,42 @@ func TestToEdges(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestThreadSafety(t *testing.T) {
+	var tests []string
+	for i := 0; i < 100; i++ {
+		tests = append(tests, "test learn & reply string")
+	}
+
+	filename, err := tmpCopy("data/pg11.brain")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer os.Remove(filename)
+
+	b, err := OpenBrain(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	for _, tt := range tests {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			b.Learn(tt)
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			b.Reply(tt)
+		}()
+	}
+
+	wg.Wait()
 }
 
 func nodeEqual(a []tokenID, b []tokenID) bool {

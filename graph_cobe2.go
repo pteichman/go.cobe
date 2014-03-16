@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 import (
@@ -31,8 +32,10 @@ const (
 )
 
 type graph struct {
-	db *sql.DB
-	q  *stmts
+	db   *sql.DB
+	lock sync.RWMutex
+
+	q *stmts
 
 	stemmer stemmer
 
@@ -95,7 +98,7 @@ func openGraph(path string) (*graph, error) {
 		return nil, err
 	}
 
-	g := &graph{db: db, q: stmts}
+	g := &graph{db: db, lock: sync.RWMutex{}, q: stmts}
 	g.order = g.getOrder()
 
 	err = prepareSql(db, stmts, g.order)
@@ -331,6 +334,9 @@ func nStrings(n int, f func(int) string) []string {
 }
 
 func (g *graph) GetInfoString(key string) (string, error) {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	var value string
 
 	err := g.q.selectInfo.QueryRow(key).Scan(&value)
@@ -342,11 +348,17 @@ func (g *graph) GetInfoString(key string) (string, error) {
 }
 
 func (g *graph) DelInfoString(key string) error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	_, err := g.q.deleteInfo.Exec(key)
 	return err
 }
 
 func (g *graph) SetInfoString(key, value string) error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	res, err := g.q.updateInfo.Exec(key, value)
 	if err != nil {
 		return err
@@ -370,6 +382,9 @@ func (g *graph) SetInfoString(key, value string) error {
 }
 
 func (g *graph) GetTokenID(text string) (tokenID, error) {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	var value int64
 
 	err := g.q.selectToken.QueryRow(text).Scan(&value)
@@ -413,6 +428,9 @@ func (g *graph) filterWordTokenIds(tokenIds []tokenID) []tokenID {
 }
 
 func (g *graph) filterTokens(query string, tokenIds []tokenID) []tokenID {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	rows, err := g.db.Query(query, toQueryArgs(tokenIds)...)
 	if err != nil {
 		log.Println(err)
@@ -443,6 +461,9 @@ func (g *graph) GetOrCreateToken(text string) tokenID {
 
 	var isWordRegexp = regexp.MustCompile(`\w`)
 	isWord := isWordRegexp.FindStringIndex(text) != nil
+
+	g.lock.Lock()
+	defer g.lock.Unlock()
 
 	res, err := g.q.insertToken.Exec(text, isWord)
 	if err != nil {
@@ -476,6 +497,9 @@ func toQueryArgs(tokenIds []tokenID) []interface{} {
 }
 
 func (g *graph) GetOrCreateNode(tokens []tokenID) nodeID {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	var node int64
 
 	tokenIds := toQueryArgs(tokens)
@@ -499,6 +523,9 @@ func (g *graph) GetOrCreateNode(tokens []tokenID) nodeID {
 }
 
 func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	res, err := g.q.incrEdge.Exec(prev, next, hasSpace)
 	if err != nil {
 		log.Println(err)
@@ -523,6 +550,9 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 }
 
 func (g *graph) getTextByEdge(edgeID edgeID) (string, bool, error) {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	var text string
 	var hasSpace bool
 
@@ -535,6 +565,9 @@ func (g *graph) getTextByEdge(edgeID edgeID) (string, bool, error) {
 }
 
 func (g *graph) getRandomToken() tokenID {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	var token int64
 	g.q.selectRandomToken.QueryRow().Scan(&token)
 
@@ -542,6 +575,9 @@ func (g *graph) getRandomToken() tokenID {
 }
 
 func (g *graph) getRandomNodeWithToken(t tokenID) nodeID {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	var node int64
 	g.q.selectRandomNode.QueryRow(t, t).Scan(&node)
 
@@ -549,6 +585,9 @@ func (g *graph) getRandomNodeWithToken(t tokenID) nodeID {
 }
 
 func (g *graph) getTokensByStem(stem string) []tokenID {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	var ret []tokenID
 
 	if g.stemmer == nil {
@@ -572,6 +611,9 @@ func (g *graph) getTokensByStem(stem string) []tokenID {
 }
 
 func (g *graph) getEdgeLogprob(edgeID edgeID) float64 {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
 	// Each edges goes from an n-gram node (word1, word2, word3)
 	// to another (word2, word3, word4).
 	//
@@ -588,7 +630,7 @@ type node struct {
 }
 
 type search struct {
-	follow func(node nodeID) (*sql.Rows, error)
+	follow func(node nodeID) ([]nodeID, []edgeID, error)
 	end    nodeID
 	left   *queue.Queue
 	result []edgeID
@@ -608,18 +650,17 @@ loop:
 		case <-s.stop:
 			break loop
 		default:
-			rows, err := s.follow(cur.node)
+			nodes, edges, err := s.follow(cur.node)
 			if err != nil {
 				log.Printf("ERROR: %s\n", err)
 			}
-			defer rows.Close()
 
-			for rows.Next() {
-				var e, n int64
-				rows.Scan(&e, &n)
+			for i := 0; i < len(nodes); i++ {
+				n := nodes[i]
+				e := edges[i]
 
 				path := cur.path[0:len(cur.path):len(cur.path)]
-				s.left.PushBack(&node{nodeID(n), append(path, edgeID(e))})
+				s.left.PushBack(&node{n, append(path, e)})
 			}
 		}
 	}
@@ -640,8 +681,27 @@ func (g *graph) search(start nodeID, end nodeID, dir Direction, stop <-chan bool
 		q = "SELECT id, prev_node FROM edges WHERE next_node = ?"
 	}
 
-	follow := func(node nodeID) (*sql.Rows, error) {
-		return g.db.Query(q, node)
+	follow := func(node nodeID) ([]nodeID, []edgeID, error) {
+		g.lock.RLock()
+		defer g.lock.RUnlock()
+
+		rows, err := g.db.Query(q, node)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var nodes []nodeID
+		var edges []edgeID
+
+		for rows.Next() {
+			var e, n int64
+			rows.Scan(&e, &n)
+
+			nodes = append(nodes, nodeID(n))
+			edges = append(edges, edgeID(e))
+		}
+
+		return nodes, edges, nil
 	}
 
 	left := queue.New()
