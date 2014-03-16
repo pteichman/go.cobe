@@ -3,7 +3,6 @@ package cobe
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"regexp"
@@ -110,7 +109,7 @@ func openGraph(path string) (*graph, error) {
 	if lang != "" {
 		s, err := snowball.New(lang)
 		if err != nil {
-			log.Printf("Error initializing stemmer: %s", err)
+			clog.Error("Error initializing stemmer: %s", err)
 		} else {
 			g.stemmer = newCobeStemmer(s)
 		}
@@ -132,12 +131,12 @@ func (g *graph) close() {
 func (g *graph) getOrder() int {
 	str, err := g.getInfoString("order")
 	if err != nil {
-		log.Println(err)
+		clog.Error("%s", err)
 	}
 
 	val, err := strconv.Atoi(str)
 	if err != nil {
-		log.Println(err)
+		clog.Error("%s", err)
 	}
 
 	return val
@@ -433,7 +432,7 @@ func (g *graph) filterTokens(query string, tokenIds []tokenID) []tokenID {
 
 	rows, err := g.db.Query(query, toQueryArgs(tokenIds)...)
 	if err != nil {
-		log.Println(err)
+		clog.Error("%s", err)
 		return nil
 	}
 	defer rows.Close()
@@ -511,12 +510,12 @@ func (g *graph) getOrCreateNode(tokens []tokenID) nodeID {
 
 	res, err := g.q.insertNode.Exec(tokenIds...)
 	if err != nil {
-		log.Println(err)
+		clog.Error("%s", err)
 	}
 
 	node, err = res.LastInsertId()
 	if err != nil {
-		log.Println(err)
+		clog.Error("%s", err)
 	}
 
 	return nodeID(node)
@@ -528,18 +527,18 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 
 	res, err := g.q.incrEdge.Exec(prev, next, hasSpace)
 	if err != nil {
-		log.Println(err)
+		clog.Error("%s", err)
 	}
 
 	n, err := res.RowsAffected()
 	if err != nil {
-		log.Println(err)
+		clog.Error("%s", err)
 	}
 
 	if n == 0 {
 		_, err := g.q.insertEdge.Exec(prev, next, hasSpace)
 		if err != nil {
-			log.Println(err)
+			clog.Error("%s", err)
 		}
 	}
 
@@ -596,7 +595,7 @@ func (g *graph) getTokensByStem(stem string) []tokenID {
 
 	rows, err := g.q.selectStemTokens.Query(g.stemmer.Stem(stem))
 	if err != nil {
-		log.Printf("ERROR: %s", err)
+		clog.Error("%s", err)
 		return ret
 	}
 	defer rows.Close()
@@ -652,7 +651,7 @@ loop:
 		default:
 			nodes, edges, err := s.follow(cur.node)
 			if err != nil {
-				log.Printf("ERROR: %s\n", err)
+				clog.Error("%s", err)
 			}
 
 			for i := 0; i < len(nodes); i++ {

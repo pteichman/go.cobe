@@ -4,16 +4,18 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"runtime/pprof"
 )
 
 import (
+	"github.com/op/go-logging"
 	"github.com/pteichman/go.cobe"
 	"github.com/pteichman/go.cobe/console"
 	"github.com/pteichman/go.cobe/ircbot"
 )
+
+var clog = logging.MustGetLogger("cobe.main")
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
@@ -44,7 +46,7 @@ func main() {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			log.Fatal(err)
+			clog.Fatal("%s", err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -52,12 +54,13 @@ func main() {
 
 	args := flag.Args()
 	if len(args) < 1 {
-		log.Fatalln("Usage: cobe console")
+		fmt.Println("Usage: cobe console")
+		os.Exit(1)
 	}
 
 	b, err := cobe.OpenBrain("cobe.brain")
 	if err != nil {
-		log.Fatal(err)
+		clog.Fatal("%s", err)
 	}
 
 	switch cmd := args[0]; cmd {
@@ -73,6 +76,6 @@ func main() {
 			learnFileLines(b, f)
 		}
 	default:
-		log.Fatalf("Unknown command: %s", cmd)
+		clog.Fatalf("Unknown command: %s", cmd)
 	}
 }

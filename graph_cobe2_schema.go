@@ -3,7 +3,6 @@ package cobe
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	// Blank import loads go-sqlite3 support into database/sql.
@@ -25,7 +24,7 @@ func initGraph(path string, opts *graphOptions) error {
 
 	defer db.Close()
 
-	log.Println("Creating table: info")
+	clog.Notice("Creating table: info")
 	_, err = db.Exec(`
 CREATE TABLE info (
 	attribute TEXT NOT NULL PRIMARY KEY,
@@ -35,7 +34,7 @@ CREATE TABLE info (
 		return err
 	}
 
-	log.Println("Creating table: tokens")
+	clog.Notice("Creating table: tokens")
 	_, err = db.Exec(`
 CREATE TABLE tokens (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +45,7 @@ CREATE TABLE tokens (
 		return err
 	}
 
-	log.Println("Creating table: token_stems")
+	clog.Notice("Creating table: token_stems")
 	_, err = db.Exec(`
 CREATE TABLE token_stems (
 	token_id INTEGER,
@@ -60,7 +59,7 @@ CREATE TABLE token_stems (
 		return fmt.Sprintf("token%d_id INTEGER REFERENCES token(id)", i)
 	})
 
-	log.Println("Creating table: nodes")
+	clog.Notice("Creating table: nodes")
 	_, err = db.Exec(fmt.Sprintf(`
 CREATE TABLE nodes (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,7 +70,7 @@ CREATE TABLE nodes (
 		return err
 	}
 
-	log.Println("Creating table: edges")
+	clog.Notice("Creating table: edges")
 	_, err = db.Exec(`
 CREATE TABLE edges (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,

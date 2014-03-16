@@ -2,7 +2,6 @@ package cobe
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -227,7 +226,7 @@ loop:
 		// Replies got unexpected results after search stop.
 	}
 
-	fmt.Printf("Got %d total replies\n", count)
+	clog.Info("Got %d total replies\n", count)
 	if bestReply == nil {
 		return "I don't know enough to answer you yet!"
 	}
@@ -399,11 +398,11 @@ func (r *reply) ToString() string {
 		for _, edge := range wordEdges {
 			word, hasSpace, err := r.graph.getTextByEdge(edge)
 			if err != nil {
-				log.Printf("ERROR: %s\n", err)
+				clog.Error("can't get text", err)
 			}
 
 			if word == "" {
-				log.Printf("ERROR: empty node text! %s", r.edges)
+				clog.Error("empty node text! %s", r.edges)
 			}
 
 			parts = append(parts, word)
