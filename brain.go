@@ -57,6 +57,8 @@ func getTokenizer(name string) tokenizer {
 }
 
 func (b *Brain) Learn(text string) {
+	now := time.Now()
+
 	tokens := b.tok.Split(text)
 
 	// skip learning if too few tokens (but don't count spaces)
@@ -89,6 +91,8 @@ func (b *Brain) Learn(text string) {
 		b.graph.addEdge(prevNode, nextNode, hasSpace)
 		prevNode = nextNode
 	})
+
+	stats.Timing("learn.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
 }
 
 func countGoodTokens(tokens []string) int {
@@ -172,6 +176,7 @@ func toEdges(order int, tokenIds []tokenID) []edge {
 }
 
 func (b *Brain) Reply(text string) string {
+	now := time.Now()
 	stats.Inc("reply", 1, 1.0)
 
 	tokens := b.tok.Split(text)
@@ -240,7 +245,9 @@ loop:
 		return "I don't know enough to answer you yet!"
 	}
 
-	return bestReply.ToString()
+	ret := bestReply.ToString()
+	stats.Timing("reply.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
+	return ret
 }
 
 func (b *Brain) conflateStems(tokens []string) []tokenID {
