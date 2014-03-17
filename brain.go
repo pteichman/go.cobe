@@ -187,6 +187,7 @@ func (b *Brain) Reply(text string) string {
 	tokenIds = uniqueIds(append(tokenIds, stemTokenIds...))
 
 	if len(tokenIds) == 0 {
+		stats.Inc("reply.babbled", 1, 1.0)
 		tokenIds = b.babble()
 	}
 
