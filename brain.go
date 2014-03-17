@@ -63,11 +63,11 @@ func (b *Brain) Learn(text string) {
 
 	// skip learning if too few tokens (but don't count spaces)
 	if countGoodTokens(tokens) <= b.graph.order {
-		stats.Inc("learn.skip", 1, 1.0)
+		stats.Inc("learn.skipped", 1, 1.0)
 		return
 	}
 
-	stats.Inc("learn", 1, 1.0)
+	stats.Inc("learn.attempted", 1, 1.0)
 
 	var tokenIds []tokenID
 	for _, text := range tokens {
@@ -92,6 +92,7 @@ func (b *Brain) Learn(text string) {
 		prevNode = nextNode
 	})
 
+	stats.Inc("learn.succeeded", 1, 1.0)
 	stats.Timing("learn.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
 }
 
@@ -177,7 +178,7 @@ func toEdges(order int, tokenIds []tokenID) []edge {
 
 func (b *Brain) Reply(text string) string {
 	now := time.Now()
-	stats.Inc("reply", 1, 1.0)
+	stats.Inc("reply.attempted", 1, 1.0)
 
 	tokens := b.tok.Split(text)
 	tokenIds := b.graph.filterPivots(unique(tokens))
@@ -213,6 +214,8 @@ loop:
 				continue loop
 			}
 
+			stats.Inc("reply.candidate.generated", 1, 1.0)
+
 			reply := newReply(b.graph, edges)
 			score := b.scorer.Score(reply)
 
@@ -238,14 +241,13 @@ loop:
 		stats.Inc("error", 1, 1.0)
 	}
 
-	stats.Inc("reply.candidate", int64(count), 1.0)
-
 	clog.Info("Got %d total replies\n", count)
 	if bestReply == nil {
 		return "I don't know enough to answer you yet!"
 	}
 
 	ret := bestReply.ToString()
+	stats.Inc("reply.succeeded", 1, 1.0)
 	stats.Timing("reply.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
 	return ret
 }

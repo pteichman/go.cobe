@@ -472,7 +472,7 @@ func (g *graph) getOrCreateToken(text string) tokenID {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	stats.Inc("token.create", 1, 1.0)
+	stats.Inc("graph.token.created", 1, 1.0)
 	res, err := g.q.insertToken.Exec(text, isWord)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
@@ -490,7 +490,7 @@ func (g *graph) getOrCreateToken(text string) tokenID {
 	if g.stemmer != nil {
 		stem := g.stemmer.Stem(text)
 		if stem != "" {
-			stats.Inc("stem.create", 1, 1.0)
+			stats.Inc("graph.stem.created", 1, 1.0)
 			g.q.insertStem.Exec(tokenID, stem)
 		}
 	}
@@ -520,7 +520,7 @@ func (g *graph) getOrCreateNode(tokens []tokenID) nodeID {
 		return nodeID(node)
 	}
 
-	stats.Inc("node.create", 1, 1.0)
+	stats.Inc("graph.node.created", 1, 1.0)
 	res, err := g.q.insertNode.Exec(tokenIds...)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
@@ -553,7 +553,7 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 	}
 
 	if n == 0 {
-		stats.Inc("edge.create", 1, 1.0)
+		stats.Inc("graph.edge.created", 1, 1.0)
 		_, err := g.q.insertEdge.Exec(prev, next, hasSpace)
 		if err != nil {
 			stats.Inc("error", 1, 1.0)
