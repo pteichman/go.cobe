@@ -66,6 +66,14 @@ func RunForever(b *cobe.Brain, o *Options) {
 		backoffConnect(conn, o)
 	})
 
+	conn.AddHandler("kick", func(conn *irc.Conn, line *irc.Line) {
+		if line.Args[1] == o.Nick {
+			var channel = line.Args[0]
+			clog.Notice("Kicked from %s. Rejoining.", channel)
+			conn.Join(channel)
+		}
+	})
+
 	// The space after comma/colon is needed so we won't treat
 	// urls as messages spoken to http.
 	userMsg := regexp.MustCompile(`^(\S+)[,:]\s(.*?)$`)
