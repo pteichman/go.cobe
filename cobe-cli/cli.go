@@ -91,6 +91,19 @@ func main() {
 		for _, f := range args[1:] {
 			learnFileLines(b, f)
 		}
+	case cmd == "del-stemmer":
+		err := b.DelStemmer()
+		if err != nil {
+			clog.Fatal(err)
+		}
+	case cmd == "set-stemmer":
+		if len(args) < 2 {
+			clog.Fatal("Usage: set-stemmer <language>")
+		}
+		err := b.SetStemmer(args[1])
+		if err != nil {
+			clog.Fatal(err)
+		}
 	default:
 		clog.Fatalf("Unknown command: %s", cmd)
 	}

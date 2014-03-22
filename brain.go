@@ -453,3 +453,11 @@ func (r *Reply) ToString() string {
 
 	return r.text
 }
+
+func (b *Cobe2Brain) DelStemmer() error {
+	return b.graph.delStemmer()
+}
+
+func (b *Cobe2Brain) SetStemmer(lang string) error {
+	return b.graph.setStemmer(lang)
+}

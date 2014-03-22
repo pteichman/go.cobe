@@ -386,6 +386,81 @@ func (g *graph) setInfoString(key, value string) error {
 	return nil
 }
 
+func (g *graph) delStemmer() error {
+	g.delInfoString("stemmer")
+	return g.deleteTokenStems()
+}
+
+func (g *graph) setStemmer(lang string) error {
+	snow, err := snowball.New(lang)
+	if err != nil {
+		return err
+	}
+
+	stemmer := newCobeStemmer(snow)
+
+	g.deleteTokenStems()
+	g.updateTokenStems(stemmer)
+	g.setInfoString("stemmer", lang)
+	g.stemmer = stemmer
+
+	return nil
+}
+
+func (g *graph) deleteTokenStems() error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	var err error
+
+	_, err = g.db.Exec("DROP INDEX IF EXISTS token_stems_stem")
+	if err != nil {
+		return err
+	}
+
+	_, err = g.db.Exec("DROP INDEX IF EXISTS token_stems_id")
+	if err != nil {
+		return err
+	}
+
+	_, err = g.db.Exec("DELETE FROM token_stems")
+	return err
+}
+
+func (g *graph) updateTokenStems(s *cobeStemmer) error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	rows, err := g.db.Query("SELECT id, text FROM tokens")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		var text string
+
+		rows.Scan(&id, &text)
+		stem := s.Stem(text)
+
+		if stem != "" {
+			g.q.insertStem.Exec(id, stem)
+		}
+	}
+
+	return nil
+}
+
+func index(haystack []string, needle string) int {
+	for i, s := range haystack {
+		if s == needle {
+			return i
+		}
+	}
+	return -1
+}
+
 func (g *graph) getTokenID(text string) (tokenID, error) {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
