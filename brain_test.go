@@ -17,7 +17,7 @@ func TestShortLearn(t *testing.T) {
 	}
 	defer os.Remove(filename)
 
-	b, err := OpenBrain(filename)
+	b, err := OpenCobe2Brain(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestReply(t *testing.T) {
 	}
 	defer os.Remove(filename)
 
-	b, err := OpenBrain(filename)
+	b, err := OpenCobe2Brain(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestLoop(t *testing.T) {
 	}
 	defer os.Remove(filename)
 
-	b, err := OpenBrain(filename)
+	b, err := OpenCobe2Brain(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestThreadSafety(t *testing.T) {
 	}
 	defer os.Remove(filename)
 
-	b, err := OpenBrain(filename)
+	b, err := OpenCobe2Brain(filename)
 	if err != nil {
 		t.Fatal(err)
 	}

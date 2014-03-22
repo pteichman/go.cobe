@@ -64,7 +64,7 @@ func saveHistory(filename string) error {
 	return err
 }
 
-func RunForever(b *cobe.Brain) {
+func RunForever(b *cobe.Cobe2Brain) {
 	history := loadHistory()
 
 	for {
@@ -79,7 +79,7 @@ func RunForever(b *cobe.Brain) {
 	}
 }
 
-func RunOne(b *cobe.Brain) error {
+func RunOne(b *cobe.Cobe2Brain) error {
 	line, err := linenoise.Line("> ")
 	if err != nil {
 		return err

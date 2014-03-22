@@ -47,7 +47,7 @@ func backoffConnect(conn *irc.Conn, o *Options) {
 	}
 }
 
-func RunForever(b *cobe.Brain, o *Options) {
+func RunForever(b *cobe.Cobe2Brain, o *Options) {
 	stop := make(chan bool)
 	conn := irc.SimpleClient(o.Nick)
 	conn.Me.Ident = o.Nick

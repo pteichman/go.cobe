@@ -31,7 +31,7 @@ var (
 	statsdname   = flag.String("statsd.name", "cobe", "statsd name")
 )
 
-func learnFileLines(b *cobe.Brain, path string) error {
+func learnFileLines(b *cobe.Cobe2Brain, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	b, err := cobe.OpenBrain("cobe.brain")
+	b, err := cobe.OpenCobe2Brain("cobe.brain")
 	if err != nil {
 		clog.Fatal("%s", err)
 	}

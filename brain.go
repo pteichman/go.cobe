@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type Brain struct {
+type Cobe2Brain struct {
 	graph  *graph
 	tok    tokenizer
 	scorer scorer
@@ -15,7 +15,7 @@ type Brain struct {
 
 const spaceTokenID tokenID = -1
 
-func OpenBrain(path string) (*Brain, error) {
+func OpenCobe2Brain(path string) (*Cobe2Brain, error) {
 	graph, err := openGraph(path)
 	if err != nil {
 		return nil, err
@@ -35,10 +35,10 @@ func OpenBrain(path string) (*Brain, error) {
 		return nil, err
 	}
 
-	return &Brain{graph, getTokenizer(tokenizer), &cobeScorer{}}, nil
+	return &Cobe2Brain{graph, getTokenizer(tokenizer), &cobeScorer{}}, nil
 }
 
-func (b *Brain) Close() {
+func (b *Cobe2Brain) Close() {
 	if b.graph != nil {
 		b.graph.close()
 		b.graph = nil
@@ -56,7 +56,7 @@ func getTokenizer(name string) tokenizer {
 	return nil
 }
 
-func (b *Brain) Learn(text string) {
+func (b *Cobe2Brain) Learn(text string) {
 	now := time.Now()
 
 	tokens := b.tok.Split(text)
@@ -107,7 +107,7 @@ func countGoodTokens(tokens []string) int {
 	return count
 }
 
-func (b *Brain) forEdges(tokenIds []tokenID, f func([]tokenID, []tokenID, bool)) {
+func (b *Cobe2Brain) forEdges(tokenIds []tokenID, f func([]tokenID, []tokenID, bool)) {
 	// Call f() on every N-gram (N = brain order) in tokenIds.
 	order := b.graph.order
 
@@ -119,7 +119,7 @@ func (b *Brain) forEdges(tokenIds []tokenID, f func([]tokenID, []tokenID, bool))
 	}
 }
 
-func (b *Brain) toChain(order int, tokenIds []tokenID) []tokenID {
+func (b *Cobe2Brain) toChain(order int, tokenIds []tokenID) []tokenID {
 	var chain []tokenID
 	for i := 0; i < order; i++ {
 		chain = append(chain, b.graph.endTokenID)
@@ -176,7 +176,7 @@ func toEdges(order int, tokenIds []tokenID) []edge {
 	return ret
 }
 
-func (b *Brain) Reply(text string) string {
+func (b *Cobe2Brain) Reply(text string) string {
 	now := time.Now()
 	stats.Inc("reply.attempted", 1, 1.0)
 
@@ -253,7 +253,7 @@ loop:
 	return ret
 }
 
-func (b *Brain) conflateStems(tokens []string) []tokenID {
+func (b *Cobe2Brain) conflateStems(tokens []string) []tokenID {
 	var ret []tokenID
 
 	for _, token := range tokens {
@@ -264,7 +264,7 @@ func (b *Brain) conflateStems(tokens []string) []tokenID {
 	return ret
 }
 
-func (b *Brain) babble() []tokenID {
+func (b *Cobe2Brain) babble() []tokenID {
 	var tokenIds []tokenID
 
 	for i := 0; i < 5; i++ {
@@ -279,7 +279,7 @@ func (b *Brain) babble() []tokenID {
 
 // replySearch combines a forward and a reverse search over the graph
 // into a series of replies.
-func (b *Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []edgeID {
+func (b *Cobe2Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []edgeID {
 	pivotID := b.pickPivot(tokenIds)
 	pivotNode := b.graph.getRandomNodeWithToken(pivotID)
 
@@ -362,7 +362,7 @@ func join(rev []edgeID, fwd []edgeID) []edgeID {
 	return append(edges, fwd...)
 }
 
-func (b *Brain) pickPivot(tokenIds []tokenID) tokenID {
+func (b *Cobe2Brain) pickPivot(tokenIds []tokenID) tokenID {
 	return tokenIds[rand.Intn(len(tokenIds))]
 }
 
