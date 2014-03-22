@@ -74,11 +74,11 @@ func TestAllowReply(t *testing.T) {
 		return len(reply.ToString()) > 140
 	}}
 
-	if len(b.ReplyWithOptions("test input", shortOpts)) >= 140 {
+	if len(b.ReplyWithOptions("alice", shortOpts)) >= 140 {
 		t.Fatal("shortOpts reply is too long")
 	}
 
-	if len(b.ReplyWithOptions("test input", longOpts)) <= 140 {
+	if len(b.ReplyWithOptions("alice", longOpts)) <= 140 {
 		t.Fatal("longOpts reply is too short")
 	}
 }
