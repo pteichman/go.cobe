@@ -176,7 +176,18 @@ func toEdges(order int, tokenIds []tokenID) []edge {
 	return ret
 }
 
+type ReplyOptions struct {
+	Duration   time.Duration
+	AllowReply func(reply *Reply) bool
+}
+
+var DefaultReplyOptions ReplyOptions = ReplyOptions{500 * time.Millisecond, nil}
+
 func (b *Cobe2Brain) Reply(text string) string {
+	return b.ReplyWithOptions(text, DefaultReplyOptions)
+}
+
+func (b *Cobe2Brain) ReplyWithOptions(text string, opts ReplyOptions) string {
 	now := time.Now()
 	stats.Inc("reply.attempted", 1, 1.0)
 
@@ -198,13 +209,13 @@ func (b *Cobe2Brain) Reply(text string) string {
 
 	var count int
 
-	var bestReply *reply
+	var bestReply *Reply
 	var bestScore float64 = -1
 
 	stop := make(chan bool)
 	replies := b.replySearch(tokenIds, stop)
 
-	timeout := time.After(500 * time.Millisecond)
+	timeout := time.After(opts.Duration)
 loop:
 	for {
 		select {
@@ -218,6 +229,10 @@ loop:
 			stats.Inc("reply.candidate.generated", 1, 1.0)
 
 			reply := newReply(b.graph, edges)
+			if opts.AllowReply != nil && !opts.AllowReply(reply) {
+				continue
+			}
+
 			score := b.scorer.Score(reply)
 
 			if score > bestScore {
@@ -230,7 +245,7 @@ loop:
 			if bestReply != nil {
 				break loop
 			} else {
-				timeout = time.After(500 * time.Millisecond)
+				timeout = time.After(opts.Duration)
 			}
 		}
 	}
@@ -396,18 +411,18 @@ func uniqueIds(ids []tokenID) []tokenID {
 	return ret
 }
 
-type reply struct {
+type Reply struct {
 	graph   *graph
 	edges   []edgeID
 	hasText bool
 	text    string
 }
 
-func newReply(graph *graph, edges []edgeID) *reply {
-	return &reply{graph, edges, false, ""}
+func newReply(graph *graph, edges []edgeID) *Reply {
+	return &Reply{graph, edges, false, ""}
 }
 
-func (r *reply) ToString() string {
+func (r *Reply) ToString() string {
 	if !r.hasText {
 		var parts []string
 

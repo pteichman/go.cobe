@@ -1,7 +1,6 @@
 package cobe
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -43,7 +42,45 @@ func TestReply(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fmt.Printf("End reply: %s\n", b.Reply("this this this is a test test test"))
+	r := b.Reply("this this this is a test test test")
+	if r == "" {
+		t.Fatal("got a nil reply")
+	}
+
+	r = b.ReplyWithOptions("this this this is a test test test", ReplyOptions{})
+	if r == "" {
+		t.Fatal("got a nil reply with empty options")
+	}
+}
+
+func TestAllowReply(t *testing.T) {
+	filename, err := tmpCopy("data/pg11.brain")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer os.Remove(filename)
+
+	b, err := OpenCobe2Brain(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	shortOpts := ReplyOptions{DefaultReplyOptions.Duration, func(reply *Reply) bool {
+		return len(reply.ToString()) < 140
+	}}
+
+	longOpts := ReplyOptions{DefaultReplyOptions.Duration, func(reply *Reply) bool {
+		return len(reply.ToString()) > 140
+	}}
+
+	if len(b.ReplyWithOptions("test input", shortOpts)) >= 140 {
+		t.Fatal("shortOpts reply is too long")
+	}
+
+	if len(b.ReplyWithOptions("test input", longOpts)) <= 140 {
+		t.Fatal("longOpts reply is too short")
+	}
 }
 
 // Run looped learn/reply on a brain to try to reproduce sqlite3 errors.

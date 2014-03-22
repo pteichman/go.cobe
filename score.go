@@ -3,12 +3,12 @@ package cobe
 import "math"
 
 type scorer interface {
-	Score(reply *reply) float64
+	Score(reply *Reply) float64
 }
 
 type cobeScorer struct{}
 
-func (s *cobeScorer) Score(reply *reply) float64 {
+func (s *cobeScorer) Score(reply *Reply) float64 {
 	var info float64
 	g := reply.graph
 
