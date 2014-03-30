@@ -819,6 +819,7 @@ func (g *graph) search(start nodeID, end nodeID, dir direction, stop <-chan bool
 		if err != nil {
 			return nil
 		}
+		defer rows.Close()
 
 		var nodes []nodeID
 
