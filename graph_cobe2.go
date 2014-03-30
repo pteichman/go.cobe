@@ -721,7 +721,8 @@ func (g *graph) getEdgeLogprob(edgeID edgeID) float64 {
 
 type node struct {
 	node nodeID
-	path []edgeID
+	edge edgeID
+	from *node
 }
 
 type search struct {
@@ -737,7 +738,7 @@ loop:
 	for s.left.Len() > 0 {
 		cur := s.left.PopFront().(*node)
 		if cur.node == s.end {
-			s.result = cur.path
+			s.result = combine(cur)
 			return true
 		}
 
@@ -751,18 +752,30 @@ loop:
 				clog.Error("%s", err)
 			}
 
-			for i := 0; i < len(nodes); i++ {
-				n := nodes[i]
-				e := edges[i]
-
-				path := cur.path[0:len(cur.path):len(cur.path)]
-				s.left.PushBack(&node{n, append(path, e)})
+			for i, n := range nodes {
+				s.left.PushBack(&node{n, edges[i], cur})
 			}
 		}
 	}
 
 	s.result = nil
 	return false
+}
+
+func combine(n *node) []edgeID {
+	// Reconstruct the search path for p.
+	var p []edgeID
+	for n.from != nil {
+		p = append(p, n.edge)
+		n = n.from
+	}
+
+	// Reverse the path in-place.
+	for i, j := 0, len(p)-1; i < j; i, j = i+1, j-1 {
+		p[i], p[j] = p[j], p[i]
+	}
+
+	return p
 }
 
 func (g *graph) search(start nodeID, end nodeID, dir direction, stop <-chan bool) *search {
@@ -797,7 +810,7 @@ func (g *graph) search(start nodeID, end nodeID, dir direction, stop <-chan bool
 	}
 
 	left := queue.New()
-	left.PushBack(&node{start, nil})
+	left.PushBack(&node{start, 0, nil})
 
 	return &search{follow, end, left, nil, stop}
 }
