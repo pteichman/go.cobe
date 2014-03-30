@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 import (
@@ -728,6 +729,7 @@ type node struct {
 
 type search struct {
 	follow func(node nodeID) ([]nodeID, []edgeID, error)
+	rand   *rand.Rand
 	end    nodeID
 	left   *queue.Queue
 	result []edgeID
@@ -753,7 +755,7 @@ loop:
 				clog.Error("%s", err)
 			}
 
-			for _, i := range rand.Perm(len(nodes)) {
+			for _, i := range s.rand.Perm(len(nodes)) {
 				s.left.PushBack(&node{nodes[i], edges[i], cur})
 			}
 		}
@@ -810,8 +812,10 @@ func (g *graph) search(start nodeID, end nodeID, dir direction, stop <-chan bool
 		return nodes, edges, nil
 	}
 
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	left := queue.New()
 	left.PushBack(&node{start, 0, nil})
 
-	return &search{follow, end, left, nil, stop}
+	return &search{follow, r, end, left, nil, stop}
 }
