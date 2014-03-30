@@ -212,6 +212,10 @@ func (b *Cobe2Brain) ReplyWithOptions(text string, opts ReplyOptions) string {
 	var bestReply *Reply
 	var bestScore float64 = -1
 
+	// A set of seen replies, so we don't spend time scoring duplicates.
+	var dups int
+	seen := make(map[int]struct{})
+
 	stop := make(chan bool)
 	replies := b.replySearch(tokenIds, stop)
 
@@ -227,6 +231,13 @@ loop:
 			}
 
 			stats.Inc("reply.candidate.generated", 1, 1.0)
+
+			h := hash(nodes)
+			if _, ok := seen[h]; ok {
+				dups++
+				continue
+			}
+			seen[h] = struct{}{}
 
 			reply := newReply(b.graph, nodes)
 			if opts.AllowReply != nil && !opts.AllowReply(reply) {
@@ -257,7 +268,7 @@ loop:
 		stats.Inc("error", 1, 1.0)
 	}
 
-	clog.Info("Got %d total replies\n", count)
+	clog.Debug("Got %d unique replies (and %d dups)\n", count, dups)
 	if bestReply == nil {
 		return "I don't know enough to answer you yet!"
 	}
@@ -266,6 +277,15 @@ loop:
 	stats.Inc("reply.succeeded", 1, 1.0)
 	stats.Timing("reply.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
 	return ret
+}
+
+func hash(nodes []nodeID) int {
+	h := 17
+	for _, n := range nodes {
+		h = h*31 + int(n)
+	}
+
+	return h
 }
 
 func (b *Cobe2Brain) conflateStems(tokens []string) []tokenID {
