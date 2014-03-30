@@ -219,8 +219,8 @@ func (b *Cobe2Brain) ReplyWithOptions(text string, opts ReplyOptions) string {
 loop:
 	for {
 		select {
-		case edges := <-replies:
-			if edges == nil {
+		case nodes := <-replies:
+			if nodes == nil {
 				// Channel was closed: run another search
 				replies = b.replySearch(tokenIds, stop)
 				continue loop
@@ -228,7 +228,7 @@ loop:
 
 			stats.Inc("reply.candidate.generated", 1, 1.0)
 
-			reply := newReply(b.graph, edges)
+			reply := newReply(b.graph, nodes)
 			if opts.AllowReply != nil && !opts.AllowReply(reply) {
 				continue
 			}
@@ -294,7 +294,7 @@ func (b *Cobe2Brain) babble() []tokenID {
 
 // replySearch combines a forward and a reverse search over the graph
 // into a series of replies.
-func (b *Cobe2Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []edgeID {
+func (b *Cobe2Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []nodeID {
 	pivotID := b.pickPivot(tokenIds)
 	pivotNode := b.graph.getRandomNodeWithToken(pivotID)
 
@@ -303,7 +303,7 @@ func (b *Cobe2Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []
 	revIter := &history{b.graph.search(pivotNode, endNode, reverse, stop), nil}
 	fwdIter := &history{b.graph.search(pivotNode, endNode, forward, stop), nil}
 
-	replies := make(chan []edgeID)
+	replies := make(chan []nodeID)
 
 	go func() {
 	loop:
@@ -349,7 +349,7 @@ func (b *Cobe2Brain) replySearch(tokenIds []tokenID, stop <-chan bool) <-chan []
 
 type history struct {
 	s *search
-	h [][]edgeID
+	h [][]nodeID
 }
 
 func (h *history) next() bool {
@@ -361,16 +361,16 @@ func (h *history) next() bool {
 	return ret
 }
 
-func (h *history) result() []edgeID {
+func (h *history) result() []nodeID {
 	return h.s.result
 }
 
-func join(rev []edgeID, fwd []edgeID) []edgeID {
-	edges := make([]edgeID, 0, len(rev)+len(fwd))
+func join(rev, fwd []nodeID) []nodeID {
+	edges := make([]nodeID, 0, len(rev)+len(fwd))
 
 	// rev is a path from the pivot node to the beginning of a
 	// reply: join its edges in reverse order.
-	for i := len(rev) - 1; i >= 0; i-- {
+	for i := len(rev) - 1; i > 0; i-- {
 		edges = append(edges, rev[i])
 	}
 
@@ -413,24 +413,24 @@ func uniqueIds(ids []tokenID) []tokenID {
 
 type Reply struct {
 	graph   *graph
-	edges   []edgeID
+	nodes   []nodeID
 	hasText bool
 	text    string
 }
 
-func newReply(graph *graph, edges []edgeID) *Reply {
-	return &Reply{graph, edges, false, ""}
+func newReply(graph *graph, nodes []nodeID) *Reply {
+	return &Reply{graph, nodes, false, ""}
 }
 
 func (r *Reply) ToString() string {
 	if !r.hasText {
 		var parts []string
 
-		// Skip any edges that don't contain word nodes.
-		wordEdges := r.edges[1 : len(r.edges)-r.graph.order+1]
+		for i := 1; i < len(r.nodes)-r.graph.order; i++ {
+			prev := r.nodes[i]
+			next := r.nodes[i+1]
 
-		for _, edge := range wordEdges {
-			word, hasSpace, err := r.graph.getTextByEdge(edge)
+			word, hasSpace, err := r.graph.getTextByNodes(prev, next)
 			if err != nil {
 				stats.Inc("error", 1, 1.0)
 				clog.Error("can't get text", err)
@@ -438,7 +438,7 @@ func (r *Reply) ToString() string {
 
 			if word == "" {
 				stats.Inc("error", 1, 1.0)
-				clog.Error("empty node text! %s", r.edges)
+				clog.Error("empty node text! %s", r.nodes)
 			}
 
 			parts = append(parts, word)

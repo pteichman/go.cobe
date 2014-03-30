@@ -150,7 +150,7 @@ func TestKnownTokenIds(t *testing.T) {
 	}
 }
 
-func TestGetTextByEdge(t *testing.T) {
+func TestGetTextByNode(t *testing.T) {
 	filename, err := tmpCopy("data/pg11.brain")
 	if err != nil {
 		t.Error(err)
@@ -164,7 +164,7 @@ func TestGetTextByEdge(t *testing.T) {
 	}
 	defer g.close()
 
-	word, hasSpace, err := g.getTextByEdge(21)
+	word, hasSpace, err := g.getTextByNodes(19, 20)
 	if err != nil {
 		t.Fatal(err)
 	}

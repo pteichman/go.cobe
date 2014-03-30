@@ -13,8 +13,9 @@ func (s *cobeScorer) Score(reply *Reply) float64 {
 	g := reply.graph
 
 	// Calculate the information content of the edges in this reply.
-	for _, edge := range reply.edges {
-		info -= g.getEdgeLogprob(edge)
+	nodes := reply.nodes
+	for i := 0; i < len(nodes)-1; i++ {
+		info -= g.getEdgeLogprob(nodes[i], nodes[i+1])
 	}
 
 	// Apply MegaHAL's fudge factor to discourage overly long
@@ -23,7 +24,7 @@ func (s *cobeScorer) Score(reply *Reply) float64 {
 	// First, we have (graph.order - 1) extra edges on either end
 	// of the reply, cobe 2.0 learns from (endToken, endToken,
 	// ...).
-	nWords := len(reply.edges) - (g.order-1)*2
+	nWords := len(reply.nodes) - (g.order-1)*2
 
 	if nWords > 16 {
 		info /= math.Sqrt(float64(nWords - 1))

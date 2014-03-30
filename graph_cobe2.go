@@ -60,7 +60,10 @@ type stmts struct {
 	incrEdge   *sql.Stmt
 	insertEdge *sql.Stmt
 
-	selectEdgeText    *sql.Stmt
+	fwdAdj *sql.Stmt
+	revAdj *sql.Stmt
+
+	selectNodeText    *sql.Stmt
 	selectEdgeCounts  *sql.Stmt
 	selectRandomToken *sql.Stmt
 	selectRandomNode  *sql.Stmt
@@ -280,17 +283,20 @@ func prepareSql(db *sql.DB, stmts *stmts, order int) error {
 
 	query = fmt.Sprintf("SELECT tokens.text, edges.has_space "+
 		"FROM nodes, edges, tokens "+
-		"WHERE edges.id = ? AND edges.prev_node = nodes.id "+
+		"WHERE edges.prev_node = ? AND edges.next_node = ? "+
+		"AND edges.prev_node = nodes.id "+
 		"AND nodes.token%d_id = tokens.id", order-1)
 
-	stmts.selectEdgeText, err = db.Prepare(query)
+	stmts.selectNodeText, err = db.Prepare(query)
 	if err != nil {
 		return err
 	}
 
-	stmts.selectEdgeCounts, err = db.Prepare("SELECT edges.count, nodes.count " +
-		"FROM edges, nodes " +
-		"WHERE edges.id = ? AND edges.prev_node = nodes.id")
+	stmts.selectEdgeCounts, err = db.Prepare(
+		"SELECT edges.count, nodes.count " +
+			"FROM edges, nodes " +
+			"WHERE edges.prev_node = ? AND edges.next_node = ? " +
+			"AND edges.prev_node = nodes.id")
 	if err != nil {
 		return err
 	}
@@ -320,6 +326,19 @@ func prepareSql(db *sql.DB, stmts *stmts, order int) error {
 
 	stmts.selectStemTokens, err = db.Prepare("SELECT token_id " +
 		"FROM token_stems WHERE token_stems.stem = ?")
+	if err != nil {
+		return err
+	}
+
+	// Node adjacency queries for walking the ngram graph.
+	stmts.fwdAdj, err = db.Prepare(
+		"SELECT next_node FROM edges WHERE prev_node = ?")
+	if err != nil {
+		return err
+	}
+
+	stmts.revAdj, err = db.Prepare(
+		"SELECT prev_node FROM edges WHERE next_node = ?")
 	if err != nil {
 		return err
 	}
@@ -644,14 +663,14 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 	// scoring).
 }
 
-func (g *graph) getTextByEdge(edgeID edgeID) (string, bool, error) {
+func (g *graph) getTextByNodes(prev nodeID, next nodeID) (string, bool, error) {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
 
 	var text string
 	var hasSpace bool
 
-	err := g.q.selectEdgeText.QueryRow(edgeID).Scan(&text, &hasSpace)
+	err := g.q.selectNodeText.QueryRow(prev, next).Scan(&text, &hasSpace)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
 		return "", false, err
@@ -707,7 +726,7 @@ func (g *graph) getTokensByStem(stem string) []tokenID {
 	return ret
 }
 
-func (g *graph) getEdgeLogprob(edgeID edgeID) float64 {
+func (g *graph) getEdgeLogprob(prev nodeID, next nodeID) float64 {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
 
@@ -717,22 +736,25 @@ func (g *graph) getEdgeLogprob(edgeID edgeID) float64 {
 	// P(word4|word1, word2, word3) = count(edgeId) / count(prevNodeId)
 	//
 	var edgeCount, prevNodeCount int64
-	g.q.selectEdgeCounts.QueryRow(edgeID).Scan(&edgeCount, &prevNodeCount)
+	err := g.q.selectEdgeCounts.QueryRow(prev, next).Scan(&edgeCount, &prevNodeCount)
+	if err != nil {
+		clog.Error("%s", err)
+	}
+
 	return math.Log2(float64(edgeCount)) - math.Log2(float64(prevNodeCount))
 }
 
 type node struct {
 	node nodeID
-	edge edgeID
 	from *node
 }
 
 type search struct {
-	follow func(node nodeID) ([]nodeID, []edgeID, error)
+	follow func(node nodeID) []nodeID
 	rand   *rand.Rand
 	end    nodeID
 	left   *queue.Queue
-	result []edgeID
+	result []nodeID
 	stop   <-chan bool
 }
 
@@ -749,14 +771,10 @@ loop:
 		case <-s.stop:
 			break loop
 		default:
-			nodes, edges, err := s.follow(cur.node)
-			if err != nil {
-				stats.Inc("error", 1, 1.0)
-				clog.Error("%s", err)
-			}
+			nodes := s.follow(cur.node)
 
 			for _, i := range s.rand.Perm(len(nodes)) {
-				s.left.PushBack(&node{nodes[i], edges[i], cur})
+				s.left.PushBack(&node{nodes[i], cur})
 			}
 		}
 	}
@@ -765,11 +783,15 @@ loop:
 	return false
 }
 
-func combine(n *node) []edgeID {
+func combine(n *node) []nodeID {
 	// Reconstruct the search path for p.
-	var p []edgeID
-	for n.from != nil {
-		p = append(p, n.edge)
+	var p []nodeID
+	for {
+		p = append(p, n.node)
+		if n.from == nil {
+			break
+		}
+
 		n = n.from
 	}
 
@@ -782,40 +804,38 @@ func combine(n *node) []edgeID {
 }
 
 func (g *graph) search(start nodeID, end nodeID, dir direction, stop <-chan bool) *search {
-	var q string
+	var q *sql.Stmt
 	if dir == forward {
-		q = "SELECT id, next_node FROM edges WHERE prev_node = ?"
+		q = g.q.fwdAdj
 	} else {
-		q = "SELECT id, prev_node FROM edges WHERE next_node = ?"
+		q = g.q.revAdj
 	}
 
-	follow := func(node nodeID) ([]nodeID, []edgeID, error) {
+	follow := func(node nodeID) []nodeID {
 		g.lock.RLock()
 		defer g.lock.RUnlock()
 
-		rows, err := g.db.Query(q, node)
+		rows, err := q.Query(node)
 		if err != nil {
-			return nil, nil, err
+			return nil
 		}
 
 		var nodes []nodeID
-		var edges []edgeID
 
 		for rows.Next() {
-			var e, n int64
-			rows.Scan(&e, &n)
+			var n int64
+			rows.Scan(&n)
 
 			nodes = append(nodes, nodeID(n))
-			edges = append(edges, edgeID(e))
 		}
 
-		return nodes, edges, nil
+		return nodes
 	}
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	left := queue.New()
-	left.PushBack(&node{start, 0, nil})
+	left.PushBack(&node{start, nil})
 
 	return &search{follow, r, end, left, nil, stop}
 }
