@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"regexp"
 	"strconv"
@@ -752,8 +753,8 @@ loop:
 				clog.Error("%s", err)
 			}
 
-			for i, n := range nodes {
-				s.left.PushBack(&node{n, edges[i], cur})
+			for _, i := range rand.Perm(len(nodes)) {
+				s.left.PushBack(&node{nodes[i], edges[i], cur})
 			}
 		}
 	}
