@@ -94,6 +94,7 @@ func (b *Cobe2Brain) Learn(text string) {
 
 	stats.Inc("learn.succeeded", 1, 1.0)
 	stats.Timing("learn.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
+	clog.Debug("Learned '%s'.", text)
 }
 
 func countGoodTokens(tokens []string) int {
@@ -190,6 +191,7 @@ func (b *Cobe2Brain) Reply(text string) string {
 func (b *Cobe2Brain) ReplyWithOptions(text string, opts ReplyOptions) string {
 	now := time.Now()
 	stats.Inc("reply.attempted", 1, 1.0)
+	clog.Debug("reply <-- '%s'", text)
 
 	tokens := b.tok.Split(text)
 	tokenIds := b.graph.filterPivots(unique(tokens))
@@ -276,6 +278,8 @@ loop:
 	ret := bestReply.ToString()
 	stats.Inc("reply.succeeded", 1, 1.0)
 	stats.Timing("reply.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
+	clog.Debug("reply --> '%s'", ret)
+
 	return ret
 }
 

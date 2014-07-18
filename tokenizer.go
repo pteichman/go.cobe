@@ -106,6 +106,5 @@ func (t *megaHALTokenizer) Split(str string) []string {
 // Capitalize the first alpha character in the reply, along with the
 // first alpha character that follows any of [.?!] and a space.
 func (t *megaHALTokenizer) Join(strs []string) string {
-	clog.Fatal("Not implemented")
-	return ""
+	panic("Not implemented.")
 }
