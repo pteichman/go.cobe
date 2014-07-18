@@ -45,7 +45,7 @@ func main() {
 	}
 
 	app.Flags = []cli.Flag{
-		cli.StringSliceFlag{Name: "brain, b", Value: &cli.StringSlice{}, Usage: "name of brain to use"},
+		cli.StringFlag{Name: "brain, b", Value: "cobe.brain", Usage: "name of brain to use"},
 	}
 
 	app.Commands = []cli.Command{
