@@ -11,13 +11,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
-	"github.com/op/go-logging"
-	"github.com/pteichman/go.cobe"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/codegangsta/cli"
+	"github.com/op/go-logging"
+	"github.com/pteichman/go.cobe"
 )
 
 var (
