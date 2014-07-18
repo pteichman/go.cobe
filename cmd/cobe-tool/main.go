@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -23,7 +22,6 @@ func learnFileLines(b *cobe.Cobe2Brain, path string) error {
 
 	s := bufio.NewScanner(bufio.NewReader(f))
 	for s.Scan() {
-		fmt.Println(s.Text())
 		b.Learn(s.Text())
 	}
 
