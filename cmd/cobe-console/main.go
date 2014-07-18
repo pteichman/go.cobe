@@ -1,4 +1,4 @@
-package console
+package main
 
 import (
 	"errors"
@@ -8,8 +8,12 @@ import (
 	"strings"
 
 	"github.com/GeertJohan/go.linenoise"
+	"github.com/codegangsta/cli"
+	"github.com/op/go-logging"
 	"github.com/pteichman/go.cobe"
 )
+
+var clog = logging.MustGetLogger("cobe.console")
 
 func tildeExpand(filename string) (string, error) {
 	if filename[0:1] != "~" {
@@ -64,11 +68,11 @@ func saveHistory(filename string) error {
 	return err
 }
 
-func RunForever(b *cobe.Cobe2Brain) {
+func runForever(b *cobe.Cobe2Brain) {
 	history := loadHistory()
 
 	for {
-		err := RunOne(b)
+		err := runOne(b)
 		if err != nil {
 			break
 		}
@@ -79,7 +83,7 @@ func RunForever(b *cobe.Cobe2Brain) {
 	}
 }
 
-func RunOne(b *cobe.Cobe2Brain) error {
+func runOne(b *cobe.Cobe2Brain) error {
 	line, err := linenoise.Line("> ")
 	if err != nil {
 		return err
@@ -93,4 +97,21 @@ func RunOne(b *cobe.Cobe2Brain) error {
 	fmt.Println(b.Reply(line))
 
 	return nil
+}
+
+func main() {
+	app := cli.NewApp()
+	app.Name = "cobe-console"
+	app.Usage = "cobe interactive console"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "brain, b", Value: "cobe.brain", Usage: "name of the sqlite file to use"},
+	}
+	app.Action = func(c *cli.Context) {
+		brain, err := cobe.OpenCobe2Brain(c.String("brain"))
+		if err != nil {
+			clog.Fatal(err)
+		}
+		runForever(brain)
+	}
+	app.Run(os.Args)
 }

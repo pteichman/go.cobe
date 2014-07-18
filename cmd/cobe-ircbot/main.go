@@ -1,11 +1,13 @@
-package ircbot
+package main
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/codegangsta/cli"
 	irc "github.com/fluffle/goirc/client"
 	logging "github.com/op/go-logging"
 	"github.com/pteichman/go.cobe"
@@ -47,7 +49,7 @@ func backoffConnect(conn *irc.Conn, o *Options) {
 	}
 }
 
-func RunForever(b *cobe.Cobe2Brain, o *Options) {
+func runForever(b *cobe.Cobe2Brain, o *Options) {
 	stop := make(chan bool)
 	conn := irc.SimpleClient(o.Nick)
 	conn.Me.Ident = o.Nick
@@ -125,4 +127,30 @@ func in(haystack []string, needle string) bool {
 	}
 
 	return false
+}
+
+func main() {
+	app := cli.NewApp()
+	app.Name = "cobe-ircbot"
+	app.Usage = "IRC bot"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "server", Usage: "IRC server to connect to (host:port)"},
+		cli.StringFlag{Name: "channels", Value: "#cobe", Usage: "IRC channel/s to join"},
+		cli.StringFlag{Name: "nick", Value: "cobe", Usage: "nickname of the bot"},
+		cli.StringFlag{Name: "brain, b", Value: "cobe.brain", Usage: "name of the sqlite file to use"},
+	}
+	app.Action = func(c *cli.Context) {
+		brain, err := cobe.OpenCobe2Brain(c.String("brain"))
+		if err != nil {
+			clog.Fatal(err)
+		}
+		opts := &Options{
+			c.String("server"),
+			c.String("nick"),
+			[]string{c.String("channels")},
+			nil,
+		}
+		runForever(brain, opts)
+	}
+	app.Run(os.Args)
 }

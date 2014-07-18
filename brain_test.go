@@ -3,6 +3,7 @@ package cobe
 import (
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"strings"
 	"sync"
 	"testing"
@@ -185,6 +186,31 @@ func TestThreadSafety(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func BenchmarkShortLearnAndReply(b *testing.B) {
+	profFile, err := os.Create("benchmark_basic.prof")
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		filename, _ := tmpCopy("data/pg11.brain")
+
+		if i == 0 {
+			pprof.StartCPUProfile(profFile)
+		}
+
+		brain, _ := OpenCobe2Brain(filename)
+
+		brain.Learn("cobe cobe cobe")
+		brain.Reply("cobe")
+
+		if i == 0 {
+			pprof.StopCPUProfile()
+		}
+		os.Remove(filename)
+	}
 }
 
 func nodeEqual(a []tokenID, b []tokenID) bool {
