@@ -105,12 +105,10 @@ func runForever(b *cobe.Cobe2Brain, o *Options) {
 
 		msg = strings.TrimSpace(msg)
 
-		clog.Debug("Learn: %s", msg)
 		b.Learn(msg)
 
 		if to == o.Nick {
 			reply := b.Reply(msg)
-			clog.Debug("Reply: %s", reply)
 			conn.Privmsg(target, fmt.Sprintf("%s: %s", user, reply))
 		}
 	})
