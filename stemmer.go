@@ -23,7 +23,7 @@ func newCobeStemmer(s *snowball.Stemmer) *cobeStemmer {
 	cs := cobeStemmer{sub: s}
 	cs.words = regexp.MustCompile(`\w`)
 	cs.smiley = regexp.MustCompile(`:-?[ \)]*\)|☺|☺️`)
-	cs.frowny = regexp.MustCompile(`:-?[' \(]*\(`)
+	cs.frowny = regexp.MustCompile(`:-?[' \(]*\(|☹|😦`)
 
 	return &cs
 }
