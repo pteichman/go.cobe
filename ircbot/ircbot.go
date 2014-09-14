@@ -8,7 +8,7 @@ import (
 
 	irc "github.com/fluffle/goirc/client"
 	logging "github.com/op/go-logging"
-	"github.com/pteichman/go.cobe"
+	cobe "github.com/pteichman/go.cobe"
 )
 
 type Options struct {
@@ -36,7 +36,7 @@ func backoffConnect(conn *irc.Conn, o *Options) {
 		wait := backoffDuration(i)
 		time.Sleep(wait)
 
-		err := conn.Connect(o.Server)
+		err := conn.Connect()
 		if err == nil {
 			// The connection was successful.
 			break
@@ -50,10 +50,13 @@ func backoffConnect(conn *irc.Conn, o *Options) {
 func RunForever(b *cobe.Cobe2Brain, o *Options) {
 	stop := make(chan bool)
 	conn := irc.SimpleClient(o.Nick)
-	conn.Me.Ident = o.Nick
-	conn.Me.Name = o.Nick
 
-	conn.AddHandler("connected", func(conn *irc.Conn, line *irc.Line) {
+	conn.Config().Server = o.Server
+
+	conn.Me().Ident = o.Nick
+	conn.Me().Name = o.Nick
+
+	conn.HandleFunc("connected", func(conn *irc.Conn, line *irc.Line) {
 		clog.Notice("Connected to %s. Joining %s.", o.Server,
 			strings.Join(o.Channels, ", "))
 		for _, channel := range o.Channels {
@@ -61,12 +64,12 @@ func RunForever(b *cobe.Cobe2Brain, o *Options) {
 		}
 	})
 
-	conn.AddHandler("disconnected", func(conn *irc.Conn, line *irc.Line) {
+	conn.HandleFunc("disconnected", func(conn *irc.Conn, line *irc.Line) {
 		clog.Warning("Disconnected from %s.", o.Server)
 		backoffConnect(conn, o)
 	})
 
-	conn.AddHandler("kick", func(conn *irc.Conn, line *irc.Line) {
+	conn.HandleFunc("kick", func(conn *irc.Conn, line *irc.Line) {
 		if line.Args[1] == o.Nick {
 			var channel = line.Args[0]
 			clog.Notice("Kicked from %s. Rejoining.", channel)
@@ -78,7 +81,7 @@ func RunForever(b *cobe.Cobe2Brain, o *Options) {
 	// urls as messages spoken to http.
 	userMsg := regexp.MustCompile(`^(\S+)[,:]\s(.*?)$`)
 
-	conn.AddHandler("privmsg", func(conn *irc.Conn, line *irc.Line) {
+	conn.HandleFunc("privmsg", func(conn *irc.Conn, line *irc.Line) {
 		user := line.Nick
 		if in(o.Ignore, user) {
 			clog.Debug("Ignoring privmsg from %s", user)
