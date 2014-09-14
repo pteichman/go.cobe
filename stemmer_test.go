@@ -39,3 +39,26 @@ func TestCobeStemmer(t *testing.T) {
 		}
 	}
 }
+
+func TestStripAccents(t *testing.T) {
+	var tests = []struct {
+		text     string
+		expected string
+	}{
+		{"Queensrÿche", "Queensryche"},
+		{"Blue Öyster Cult", "Blue Oyster Cult"},
+		{"Motörhead", "Motorhead"},
+		{"The Accüsed", "The Accused"},
+		{"Mötley Crüe", "Motley Crue"},
+		{"François", "Francois"},
+		{"ą/ę/ś/ć", "a/e/s/c"},
+	}
+
+	for ti, tt := range tests {
+		strip := stripAccents(tt.text)
+		if tt.expected != strip {
+			t.Errorf("[%d] %s expected %s; was %s", ti, tt.text,
+				tt.expected, strip)
+		}
+	}
+}

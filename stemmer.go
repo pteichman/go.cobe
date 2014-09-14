@@ -3,8 +3,11 @@ package cobe
 import (
 	"regexp"
 	"strings"
+	"unicode"
 
 	"bitbucket.org/tebeka/snowball"
+	"code.google.com/p/go.text/transform"
+	"code.google.com/p/go.text/unicode/norm"
 )
 
 type stemmer interface {
@@ -31,7 +34,7 @@ func newCobeStemmer(s *snowball.Stemmer) *cobeStemmer {
 func (s *cobeStemmer) Stem(token string) string {
 	// Tokens with a word character go through the snowball stemmer.
 	if s.words.FindString(token) != "" {
-		return s.sub.Stem(strings.ToLower(token))
+		return s.sub.Stem(stripAccents(strings.ToLower(token)))
 	}
 
 	if s.smiley.FindString(token) != "" {
@@ -43,4 +46,30 @@ func (s *cobeStemmer) Stem(token string) string {
 	}
 
 	return ""
+}
+
+// stripAccents attempts to replace accented characters with an ASCII
+// equivalent. This is an extreme oversimplication, but since cobe
+// only uses this to create token equivalence (these strings are never
+// displayed) it gets a pass.
+func stripAccents(s string) string {
+	s2, _, err := transform.String(stripT, s)
+	if err != nil {
+		return s
+	}
+
+	return s2
+}
+
+var stripT transform.Transformer
+
+func init() {
+	stripT = transform.Chain(
+		norm.NFD,
+		transform.RemoveFunc(isMn),
+		norm.NFC)
+}
+
+func isMn(r rune) bool {
+	return unicode.Is(unicode.Mn, r)
 }
