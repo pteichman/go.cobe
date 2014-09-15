@@ -55,7 +55,7 @@ func RunForever(b *cobe.Cobe2Brain, o *Options) {
 	conn.Me().Name = o.Nick
 
 	conn.HandleFunc("connected", func(conn *irc.Conn, line *irc.Line) {
-		clog.Notice("Connected to %s. Joining %s.", o.Server,
+		log.Printf("Connected to %s. Joining %s.", o.Server,
 			strings.Join(o.Channels, ", "))
 		for _, channel := range o.Channels {
 			conn.Join(channel)
@@ -63,14 +63,14 @@ func RunForever(b *cobe.Cobe2Brain, o *Options) {
 	})
 
 	conn.HandleFunc("disconnected", func(conn *irc.Conn, line *irc.Line) {
-		clog.Warning("Disconnected from %s.", o.Server)
+		log.Printf("Disconnected from %s.", o.Server)
 		backoffConnect(conn, o)
 	})
 
 	conn.HandleFunc("kick", func(conn *irc.Conn, line *irc.Line) {
 		if line.Args[1] == o.Nick {
 			var channel = line.Args[0]
-			clog.Notice("Kicked from %s. Rejoining.", channel)
+			log.Printf("Kicked from %s. Rejoining.", channel)
 			conn.Join(channel)
 		}
 	})
@@ -82,13 +82,13 @@ func RunForever(b *cobe.Cobe2Brain, o *Options) {
 	conn.HandleFunc("privmsg", func(conn *irc.Conn, line *irc.Line) {
 		user := line.Nick
 		if in(o.Ignore, user) {
-			clog.Debug("Ignoring privmsg from %s", user)
+			log.Printf("Ignoring privmsg from %s", user)
 			return
 		}
 
 		target := line.Args[0]
 		if !in(o.Channels, target) {
-			clog.Debug("Ignoring privmsg on %s", target)
+			log.Printf("Ignoring privmsg on %s", target)
 			return
 		}
 
@@ -104,12 +104,12 @@ func RunForever(b *cobe.Cobe2Brain, o *Options) {
 
 		msg = strings.TrimSpace(msg)
 
-		clog.Debug("Learn: %s", msg)
+		log.Printf("Learn: %s", msg)
 		b.Learn(msg)
 
 		if to == o.Nick {
 			reply := b.Reply(msg)
-			clog.Debug("Reply: %s", reply)
+			log.Printf("Reply: %s", reply)
 			conn.Privmsg(target, fmt.Sprintf("%s: %s", user, reply))
 		}
 	})

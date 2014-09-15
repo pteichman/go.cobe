@@ -11,6 +11,7 @@ import (
 
 import (
 	"github.com/cactus/go-statsd-client/statsd"
+	cobe "github.com/pteichman/go.cobe"
 	"github.com/pteichman/go.cobe/console"
 	"github.com/pteichman/go.cobe/ircbot"
 )
@@ -93,17 +94,17 @@ func main() {
 	case cmd == "del-stemmer":
 		err := b.DelStemmer()
 		if err != nil {
-			clog.Fatal(err)
+			log.Fatalf("Deleting stemmer: %s", err)
 		}
 	case cmd == "set-stemmer":
 		if len(args) < 2 {
-			clog.Fatal("Usage: set-stemmer <language>")
+			log.Fatal("Usage: set-stemmer <language>")
 		}
 		err := b.SetStemmer(args[1])
 		if err != nil {
-			clog.Fatal(err)
+			log.Fatalf("Setting stemmer: %s", err)
 		}
 	default:
-		clog.Fatalf("Unknown command: %s", cmd)
+		log.Fatalf("Unknown command: %s", cmd)
 	}
 }
