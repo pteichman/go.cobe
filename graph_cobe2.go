@@ -1,6 +1,7 @@
 package cobe
 
 import (
+	"container/list"
 	"database/sql"
 	"fmt"
 	"log"
@@ -17,7 +18,6 @@ import (
 import (
 	"bitbucket.org/tebeka/snowball"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/phf/go-queue/queue"
 )
 
 // This is a straight port of the Python cobe brain.
@@ -754,7 +754,7 @@ type search struct {
 	follow func(node nodeID) []nodeID
 	rand   *rand.Rand
 	end    nodeID
-	left   *queue.Queue
+	left   *list.List
 	result []nodeID
 	stop   <-chan bool
 }
@@ -762,7 +762,7 @@ type search struct {
 func (s *search) next() bool {
 loop:
 	for s.left.Len() > 0 {
-		cur := s.left.PopFront().(*node)
+		cur := popFront(s.left).(*node)
 		if cur.node == s.end {
 			s.result = combine(cur)
 			return true
@@ -782,6 +782,12 @@ loop:
 
 	s.result = nil
 	return false
+}
+
+func popFront(l *list.List) interface{} {
+	elt := l.Front()
+	l.Remove(elt)
+	return elt.Value
 }
 
 func combine(n *node) []nodeID {
@@ -836,8 +842,15 @@ func (g *graph) search(start nodeID, end nodeID, dir direction, stop <-chan bool
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	left := queue.New()
+	left := list.New()
 	left.PushBack(&node{start, nil})
 
-	return &search{follow, r, end, left, nil, stop}
+	return &search{
+		follow: follow,
+		rand:   r,
+		end:    end,
+		left:   left,
+		result: nil,
+		stop:   stop,
+	}
 }
