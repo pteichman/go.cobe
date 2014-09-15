@@ -2,12 +2,12 @@ package ircbot
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"time"
 
 	irc "github.com/fluffle/goirc/client"
-	logging "github.com/op/go-logging"
 	cobe "github.com/pteichman/go.cobe"
 )
 
@@ -17,8 +17,6 @@ type Options struct {
 	Channels []string
 	Ignore   []string
 }
-
-var clog = logging.MustGetLogger("cobe.ircbot")
 
 // Backoff policy, milliseconds per attempt. End up with 30s attempts.
 var backoff = []int{0, 0, 10, 30, 100, 300, 1000, 3000, 10000, 30000}
@@ -42,7 +40,7 @@ func backoffConnect(conn *irc.Conn, o *Options) {
 			break
 		}
 
-		clog.Warning("Connection to %s failed: %s [%dms]", o.Server, err,
+		log.Printf("Connection to %s failed: %s [%dms]", o.Server, err,
 			int64(wait/time.Millisecond))
 	}
 }

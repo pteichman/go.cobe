@@ -4,19 +4,16 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"runtime/pprof"
 )
 
 import (
 	"github.com/cactus/go-statsd-client/statsd"
-	"github.com/op/go-logging"
-	"github.com/pteichman/go.cobe"
 	"github.com/pteichman/go.cobe/console"
 	"github.com/pteichman/go.cobe/ircbot"
 )
-
-var clog = logging.MustGetLogger("cobe.main")
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
@@ -52,7 +49,7 @@ func main() {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			clog.Fatal("%s", err)
+			log.Fatalf("Creating cpu profile: %s", err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -61,7 +58,7 @@ func main() {
 	if *statsdserver != "" {
 		s, err := statsd.New(*statsdserver, *statsdname)
 		if err != nil {
-			clog.Fatal("Initializing statsd: %s", err)
+			log.Fatalf("Initializing statsd: %s", err)
 		}
 
 		cobe.SetStatter(s)
@@ -75,7 +72,7 @@ func main() {
 
 	b, err := cobe.OpenCobe2Brain("cobe.brain")
 	if err != nil {
-		clog.Fatal("%s", err)
+		log.Fatalf("Opening brain file: %s", err)
 	}
 
 	var cmd = args[0]
@@ -84,7 +81,9 @@ func main() {
 		console.RunForever(b)
 	case cmd == "ircbot" || cmd == "irc-client":
 		opts := &ircbot.Options{
-			*ircserver, *ircnick, []string{*ircchannel}, nil,
+			Server:   *ircserver,
+			Nick:     *ircnick,
+			Channels: []string{*ircchannel},
 		}
 		ircbot.RunForever(b, opts)
 	case cmd == "learn":

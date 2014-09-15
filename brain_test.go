@@ -67,11 +67,11 @@ func TestAllowReply(t *testing.T) {
 	}
 
 	shortOpts := ReplyOptions{DefaultReplyOptions.Duration, func(reply *Reply) bool {
-		return len(reply.ToString()) < 140
+		return len(reply.String()) < 140
 	}}
 
 	longOpts := ReplyOptions{DefaultReplyOptions.Duration, func(reply *Reply) bool {
-		return len(reply.ToString()) > 140
+		return len(reply.String()) > 140
 	}}
 
 	if len(b.ReplyWithOptions("alice", shortOpts)) >= 140 {

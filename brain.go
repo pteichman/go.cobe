@@ -2,6 +2,7 @@ package cobe
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -268,12 +269,12 @@ loop:
 		stats.Inc("error", 1, 1.0)
 	}
 
-	clog.Debug("Got %d unique replies (and %d dups)\n", count, dups)
+	log.Printf("Got %d unique replies (and %d dups)", count, dups)
 	if bestReply == nil {
 		return "I don't know enough to answer you yet!"
 	}
 
-	ret := bestReply.ToString()
+	ret := bestReply.String()
 	stats.Inc("reply.succeeded", 1, 1.0)
 	stats.Timing("reply.response_time", int64(time.Since(now)/time.Millisecond), 1.0)
 	return ret
@@ -442,7 +443,7 @@ func newReply(graph *graph, nodes []nodeID) *Reply {
 	return &Reply{graph, nodes, false, ""}
 }
 
-func (r *Reply) ToString() string {
+func (r *Reply) String() string {
 	if !r.hasText {
 		var parts []string
 
@@ -453,12 +454,12 @@ func (r *Reply) ToString() string {
 			word, hasSpace, err := r.graph.getTextByNodes(prev, next)
 			if err != nil {
 				stats.Inc("error", 1, 1.0)
-				clog.Error("can't get text: %s", err)
+				log.Printf("can't get text: %s", err)
 			}
 
 			if word == "" {
 				stats.Inc("error", 1, 1.0)
-				clog.Error("empty node text: %v", r.nodes)
+				log.Printf("empty node text: %v", r.nodes)
 			}
 
 			parts = append(parts, word)

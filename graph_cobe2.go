@@ -3,6 +3,7 @@ package cobe
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -114,7 +115,7 @@ func openGraph(path string) (*graph, error) {
 	if lang != "" {
 		s, err := snowball.New(lang)
 		if err != nil {
-			clog.Error("Error initializing stemmer: %s", err)
+			log.Printf("Error initializing stemmer: %s", err)
 		} else {
 			g.stemmer = newCobeStemmer(s)
 		}
@@ -137,13 +138,13 @@ func (g *graph) getOrder() int {
 	str, err := g.getInfoString("order")
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Getting order: %s", err)
 	}
 
 	val, err := strconv.Atoi(str)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Converting order: %s", err)
 	}
 
 	return val
@@ -536,7 +537,7 @@ func (g *graph) filterTokens(query string, tokenIds []tokenID) []tokenID {
 	rows, err := g.db.Query(query, toQueryArgs(tokenIds)...)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Filtering tokens: %s", err)
 		return nil
 	}
 	defer rows.Close()
@@ -620,13 +621,13 @@ func (g *graph) getOrCreateNode(tokens []tokenID) nodeID {
 	res, err := g.q.insertNode.Exec(tokenIds...)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Inserting node: %s", err)
 	}
 
 	node, err = res.LastInsertId()
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Getting last rowid: %s", err)
 	}
 
 	return nodeID(node)
@@ -639,13 +640,13 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 	res, err := g.q.incrEdge.Exec(prev, next, hasSpace)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Incr edge count: %s", err)
 	}
 
 	n, err := res.RowsAffected()
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Rows affected: %s", err)
 	}
 
 	if n == 0 {
@@ -653,7 +654,7 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 		_, err := g.q.insertEdge.Exec(prev, next, hasSpace)
 		if err != nil {
 			stats.Inc("error", 1, 1.0)
-			clog.Error(err.Error())
+			log.Printf("Inserting edge: %s", err)
 		}
 	}
 
@@ -712,7 +713,7 @@ func (g *graph) getTokensByStem(stem string) []tokenID {
 	rows, err := g.q.selectStemTokens.Query(g.stemmer.Stem(stem))
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error(err.Error())
+		log.Printf("Selecting stem tokens: %s", err)
 		return ret
 	}
 	defer rows.Close()
@@ -738,7 +739,7 @@ func (g *graph) getEdgeLogprob(prev nodeID, next nodeID) float64 {
 	var edgeCount, prevNodeCount int64
 	err := g.q.selectEdgeCounts.QueryRow(prev, next).Scan(&edgeCount, &prevNodeCount)
 	if err != nil {
-		clog.Error(err.Error())
+		log.Printf("Selecting edge counts: %s", err)
 	}
 
 	return math.Log2(float64(edgeCount)) - math.Log2(float64(prevNodeCount))
