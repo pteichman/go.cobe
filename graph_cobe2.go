@@ -137,13 +137,13 @@ func (g *graph) getOrder() int {
 	str, err := g.getInfoString("order")
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 	}
 
 	val, err := strconv.Atoi(str)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 	}
 
 	return val
@@ -536,7 +536,7 @@ func (g *graph) filterTokens(query string, tokenIds []tokenID) []tokenID {
 	rows, err := g.db.Query(query, toQueryArgs(tokenIds)...)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 		return nil
 	}
 	defer rows.Close()
@@ -620,13 +620,13 @@ func (g *graph) getOrCreateNode(tokens []tokenID) nodeID {
 	res, err := g.q.insertNode.Exec(tokenIds...)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 	}
 
 	node, err = res.LastInsertId()
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 	}
 
 	return nodeID(node)
@@ -639,13 +639,13 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 	res, err := g.q.incrEdge.Exec(prev, next, hasSpace)
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 	}
 
 	n, err := res.RowsAffected()
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 	}
 
 	if n == 0 {
@@ -653,7 +653,7 @@ func (g *graph) addEdge(prev nodeID, next nodeID, hasSpace bool) {
 		_, err := g.q.insertEdge.Exec(prev, next, hasSpace)
 		if err != nil {
 			stats.Inc("error", 1, 1.0)
-			clog.Error("%s", err)
+			clog.Error(err.Error())
 		}
 	}
 
@@ -712,7 +712,7 @@ func (g *graph) getTokensByStem(stem string) []tokenID {
 	rows, err := g.q.selectStemTokens.Query(g.stemmer.Stem(stem))
 	if err != nil {
 		stats.Inc("error", 1, 1.0)
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 		return ret
 	}
 	defer rows.Close()
@@ -738,7 +738,7 @@ func (g *graph) getEdgeLogprob(prev nodeID, next nodeID) float64 {
 	var edgeCount, prevNodeCount int64
 	err := g.q.selectEdgeCounts.QueryRow(prev, next).Scan(&edgeCount, &prevNodeCount)
 	if err != nil {
-		clog.Error("%s", err)
+		clog.Error(err.Error())
 	}
 
 	return math.Log2(float64(edgeCount)) - math.Log2(float64(prevNodeCount))

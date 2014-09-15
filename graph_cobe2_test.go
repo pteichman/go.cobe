@@ -54,7 +54,7 @@ func TestInfo(t *testing.T) {
 
 	order, _ := g.getInfoString("order")
 	if order != "3" {
-		t.Error("Order: expected 3, was %s", order)
+		t.Errorf("Order: expected 3, was %s", order)
 	}
 
 	text, err := g.getInfoString("missing")
@@ -69,7 +69,7 @@ func TestInfo(t *testing.T) {
 
 	text, err = g.getInfoString("foo")
 	if text != "bar" || err != nil {
-		t.Error("Expected bar, was %s", text)
+		t.Errorf("Expected bar, was %s", text)
 	}
 }
 
@@ -89,7 +89,7 @@ func TestAlice(t *testing.T) {
 
 	order, _ := g.getInfoString("order")
 	if order != "3" {
-		t.Error("Order: expected 3, was %s", order)
+		t.Errorf("Order: expected 3, was %s", order)
 	}
 
 	token, err := g.getTokenID("Alice")
@@ -98,12 +98,12 @@ func TestAlice(t *testing.T) {
 	}
 
 	if token != 18 {
-		t.Error("Token[Alice]: expected 18, was %d", token)
+		t.Errorf("Token[Alice]: expected 18, was %d", token)
 	}
 
 	token = g.getOrCreateToken("Alice2")
 	if token != 3428 {
-		t.Error("Token[Alice2]: expected 3428, was %d", token)
+		t.Errorf("Token[Alice2]: expected 3428, was %d", token)
 	}
 
 	if g.stemmer == nil {
@@ -128,25 +128,25 @@ func TestKnownTokenIds(t *testing.T) {
 	// "." and "Alice" are found, "robot" not.
 	knownIds := g.getKnownTokenIds([]string{".", "Alice", "robot"})
 	if knownIds[0] != 11 {
-		t.Error("Expected tokenId(\".\") == 11, was %d", knownIds[0])
+		t.Errorf("Expected tokenId(\".\") == 11, was %d", knownIds[0])
 	}
 
 	if knownIds[1] != 18 {
-		t.Error("Expected tokenId(\"Alice\") == 18, was %d", knownIds[1])
+		t.Errorf("Expected tokenId(\"Alice\") == 18, was %d", knownIds[1])
 	}
 
 	if len(knownIds) != 2 {
-		t.Error("Expected 2 known tokenIds, was %d", len(knownIds))
+		t.Errorf("Expected 2 known tokenIds, was %d", len(knownIds))
 	}
 
 	// filter out non-words
 	knownIds = g.filterWordTokenIds(knownIds)
 	if knownIds[0] != 18 {
-		t.Error("Expected tokenId(\"Alice\") == 18, was %d", knownIds[0])
+		t.Errorf("Expected tokenId(\"Alice\") == 18, was %d", knownIds[0])
 	}
 
 	if len(knownIds) != 1 {
-		t.Error("Expected 1 known tokenId, was %d", len(knownIds))
+		t.Errorf("Expected 1 known tokenId, was %d", len(knownIds))
 	}
 }
 
@@ -170,6 +170,6 @@ func TestGetTextByNode(t *testing.T) {
 	}
 
 	if word != "." || hasSpace != true {
-		t.Errorf("Expected . & true, got %s & %s", word, hasSpace)
+		t.Errorf("Expected . & true, got %s & %t", word, hasSpace)
 	}
 }

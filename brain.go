@@ -453,12 +453,12 @@ func (r *Reply) ToString() string {
 			word, hasSpace, err := r.graph.getTextByNodes(prev, next)
 			if err != nil {
 				stats.Inc("error", 1, 1.0)
-				clog.Error("can't get text", err)
+				clog.Error("can't get text: %s", err)
 			}
 
 			if word == "" {
 				stats.Inc("error", 1, 1.0)
-				clog.Error("empty node text! %s", r.nodes)
+				clog.Error("empty node text: %v", r.nodes)
 			}
 
 			parts = append(parts, word)

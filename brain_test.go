@@ -139,7 +139,7 @@ func TestToEdges(t *testing.T) {
 
 		for i := 0; i < len(tt.expected); i++ {
 			if len(edges) != len(tt.expected) {
-				t.Errorf("[%d] bad edge count: %d != %d",
+				t.Errorf("[%d] bad edge count: %d != %d", tn,
 					len(edges), len(tt.expected))
 			}
 
@@ -178,10 +178,10 @@ func TestThreadSafety(t *testing.T) {
 		}()
 
 		wg.Add(1)
-		go func() {
+		go func(text string) {
 			defer wg.Done()
-			b.Reply(tt)
-		}()
+			b.Reply(text)
+		}(tt)
 	}
 
 	wg.Wait()
